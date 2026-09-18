@@ -1,7 +1,7 @@
 /*
  * Arin32 - Modern OpenGL Graphical User Interface Library
  *
- * Copyright (c) 2026, Arin32 Contributors
+ * Copyright (c) 2026, Arin32 & ArinOS Contributors
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

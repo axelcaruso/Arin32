@@ -1,7 +1,7 @@
 /*
  * Arin32 - Modern OpenGL Graphical User Interface Library
  *
- * Copyright (c) 2026, Arin32 Contributors
+ * Copyright (c) 2026, Arin32 & ArinOS Contributors
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,16 +31,16 @@
 namespace arin {
 
 /**
- * @brief Default constructor creating a standard 120x40 button.
+ * @brief Default constructor creating a standard 85x32 button.
  */
 Button::Button()
-    : m_text("Button"), m_bounds(0.0f, 0.0f, 120.0f, 40.0f), m_style(ButtonStyle::primary()) {}
+    : m_text("Button"), m_bounds(0.0f, 0.0f, 85.0f, 32.0f), m_style(ButtonStyle::primary()) {}
 
 /**
  * @brief Constructs a button with a given label.
  */
 Button::Button(std::string label)
-    : m_text(std::move(label)), m_bounds(0.0f, 0.0f, 120.0f, 40.0f), m_style(ButtonStyle::primary()) {}
+    : m_text(std::move(label)), m_bounds(0.0f, 0.0f, 85.0f, 32.0f), m_style(ButtonStyle::primary()) {}
 
 /**
  * @brief Constructs a button with explicit position and size.

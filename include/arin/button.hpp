@@ -1,7 +1,7 @@
 /*
  * Arin32 - Modern OpenGL Graphical User Interface Library
  *
- * Copyright (c) 2026, Arin32 Contributors
+ * Copyright (c) 2026, Arin32 & ArinOS Contributors
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -72,7 +72,7 @@ public:
     using HoverCallback = std::function<void(bool)>;
 
     /**
-     * @brief Constructs an empty button at (0, 0, 120, 40).
+     * @brief Constructs an empty button at (0, 0, 85, 32).
      */
     Button();
 
@@ -256,7 +256,7 @@ public:
 
 private:
     std::string m_text{"Button"};
-    Rect m_bounds{0.0f, 0.0f, 120.0f, 40.0f};
+    Rect m_bounds{0.0f, 0.0f, 85.0f, 32.0f};
     ButtonStyle m_style{ButtonStyle::primary()};
     ButtonState m_state{ButtonState::Normal};
 

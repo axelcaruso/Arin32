@@ -1,7 +1,7 @@
 /*
  * Arin32 - Modern OpenGL Graphical User Interface Library
  *
- * Copyright (c) 2026, Arin32 Contributors
+ * Copyright (c) 2026, Arin32 & ArinOS Contributors
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,7 +28,8 @@
 
 /**
  * @file button_demo.cpp
- * @brief Interactive showcase demonstrating Arin32's absurdly simple Button API.
+ * @brief Interactive showcase demonstrating Arin32's Button widget with the exact
+ *        visual styling, dimensions, and corner radius from the ArinOS design reference.
  */
 
 #include <arin/arin.hpp>
@@ -62,97 +63,212 @@ int main(int argc, char** argv) {
             screenshot_path = argv[++i];
         }
     }
+
     // -------------------------------------------------------------------------
     // 1. Create the Application Window (800x600 pixels)
     // -------------------------------------------------------------------------
-    arin::App app("Arin32 - Interactive Button Showcase", 800, 600);
+    arin::App app("Arin32 & ArinOS - Button Showcase", 800, 600);
 
-    int click_count = 0;
-    bool is_dark_mode = true;
+    // Default neutral grey background for the desktop/window canvas
+    app.theme().background_color = arin::Color::from_hex(0xA8A8A8);
+
+    std::string dialog_status = "Status: Waiting for user action...";
+    int action_counter = 0;
+    bool checkbox_checked = false;
 
     // -------------------------------------------------------------------------
-    // 2. Add Buttons using the Fluent & Absurdly Simple API
+    // 2. Exact Dialog Box Buttons (Save, Don't Save, Cancel)
+    //    Dimensions: Height = 32px, Corner Radius = 4.5px, exact styling
     // -------------------------------------------------------------------------
+    const float dialog_x = 215.0f;
+    const float dialog_y = 80.0f;
+    const float dialog_w = 370.0f;
+    const float dialog_h = 250.0f;
+    const float footer_y = dialog_y + 175.0f;
+    const float btn_y = footer_y + 20.0f;
 
-    // Primary Interactive Counter Button
-    auto counter_btn = app.add_button("Click Me! (0 clicks)", 260.0f, 150.0f, 280.0f, 52.0f);
-    counter_btn->set_style(arin::ButtonStyle::primary())
-               .set_corner_radius(10.0f);
+    // Button 1: "Save" (Primary Accent Blue #0067C0, 82x32, radius 4.5)
+    auto save_btn = app.add_button("Save", dialog_x + 24.0f, btn_y, 82.0f, 32.0f);
+    save_btn->set_style(arin::ButtonStyle::primary());
 
-    counter_btn->on_click([&]() {
-        click_count++;
-        counter_btn->set_text("Clicks: " + std::to_string(click_count));
-        std::cout << "[Arin32 Event] Counter button clicked! Total clicks: " << click_count << std::endl;
+    save_btn->on_click([&]() {
+        action_counter++;
+        dialog_status = "Status: Work Saved! (" + std::to_string(action_counter) + ")";
+        std::cout << "[Arin32 Event] 'Save' button clicked! Action #" << action_counter << std::endl;
     });
 
-    // Success Button: Toggle Theme
-    auto theme_btn = app.add_button("Toggle Theme (Dark/Light)", 260.0f, 220.0f, 280.0f, 52.0f);
-    theme_btn->set_style(arin::ButtonStyle::success())
-             .set_corner_radius(10.0f);
+    // Button 2: "Don't Save" (Secondary White with 1px border, 96x32, radius 4.5)
+    auto dont_save_btn = app.add_button("Don't Save", dialog_x + 118.0f, btn_y, 96.0f, 32.0f);
+    dont_save_btn->set_style(arin::ButtonStyle::secondary());
 
-    theme_btn->on_click([&]() {
-        is_dark_mode = !is_dark_mode;
-        if (is_dark_mode) {
-            app.theme() = arin::Theme::dark();
-            std::cout << "[Arin32 Event] Switched to Dark Theme." << std::endl;
-        } else {
-            app.theme() = arin::Theme::light();
-            std::cout << "[Arin32 Event] Switched to Light Theme." << std::endl;
-        }
+    dont_save_btn->on_click([&]() {
+        action_counter++;
+        dialog_status = "Status: Work Discarded. (" + std::to_string(action_counter) + ")";
+        std::cout << "[Arin32 Event] 'Don't Save' button clicked! Action #" << action_counter << std::endl;
     });
 
-    // Danger Button: Reset Counter
-    auto reset_btn = app.add_button("Reset Counter", 260.0f, 290.0f, 280.0f, 52.0f);
-    reset_btn->set_style(arin::ButtonStyle::danger())
-             .set_corner_radius(10.0f);
+    // Button 3: "Cancel" (Secondary White with 1px border, 80x32, radius 4.5)
+    auto cancel_btn = app.add_button("Cancel", dialog_x + 226.0f, btn_y, 80.0f, 32.0f);
+    cancel_btn->set_style(arin::ButtonStyle::secondary());
 
-    reset_btn->on_click([&]() {
-        click_count = 0;
-        counter_btn->set_text("Click Me! (0 clicks)");
-        std::cout << "[Arin32 Event] Counter was reset to 0." << std::endl;
+    cancel_btn->on_click([&]() {
+        action_counter++;
+        dialog_status = "Status: Action Cancelled. (" + std::to_string(action_counter) + ")";
+        std::cout << "[Arin32 Event] 'Cancel' button clicked! Action #" << action_counter << std::endl;
     });
 
-    // Outline Button: Close Application
-    auto exit_btn = app.add_button("Exit Application", 260.0f, 360.0f, 280.0f, 52.0f);
-    exit_btn->set_style(arin::ButtonStyle::outline(arin::Color::from_hex(0x38BDF8)))
-            .set_corner_radius(10.0f);
+    // -------------------------------------------------------------------------
+    // 3. Additional Palette Showcase: Success, Danger, Outline, Disabled
+    //    All sharing the exact same 32px height, 4.5px radius, and form factor!
+    // -------------------------------------------------------------------------
+    const float palette_y = 415.0f;
 
+    auto success_btn = app.add_button("Success", 125.0f, palette_y, 100.0f, 32.0f);
+    success_btn->set_style(arin::ButtonStyle::success());
+    success_btn->on_click([&]() {
+        dialog_status = "Status: Success action triggered.";
+        std::cout << "[Arin32 Event] Success button clicked!\n";
+    });
+
+    auto danger_btn = app.add_button("Danger", 237.0f, palette_y, 100.0f, 32.0f);
+    danger_btn->set_style(arin::ButtonStyle::danger());
+    danger_btn->on_click([&]() {
+        dialog_status = "Status: Danger action triggered.";
+        std::cout << "[Arin32 Event] Danger button clicked!\n";
+    });
+
+    auto outline_btn = app.add_button("Outline", 349.0f, palette_y, 100.0f, 32.0f);
+    outline_btn->set_style(arin::ButtonStyle::outline(arin::Color::from_hex(0x0067C0)));
+    outline_btn->on_click([&]() {
+        dialog_status = "Status: Outline button clicked.";
+        std::cout << "[Arin32 Event] Outline button clicked!\n";
+    });
+
+    auto disabled_btn = app.add_button("Disabled", 461.0f, palette_y, 100.0f, 32.0f);
+    disabled_btn->set_style(arin::ButtonStyle::secondary())
+                .set_enabled(false);
+
+    auto exit_btn = app.add_button("Exit Demo", 573.0f, palette_y, 100.0f, 32.0f);
+    exit_btn->set_style(arin::ButtonStyle::secondary());
     exit_btn->on_click([&]() {
-        std::cout << "[Arin32 Event] Exit button clicked. Closing application." << std::endl;
+        std::cout << "[Arin32 Event] Closing demo application.\n";
         app.close();
     });
 
-    // Disabled Button example
-    auto disabled_btn = app.add_button("Disabled Button (Inactive)", 260.0f, 430.0f, 280.0f, 52.0f);
-    disabled_btn->set_enabled(false)
-                .set_corner_radius(10.0f);
-
     // -------------------------------------------------------------------------
-    // 3. Custom Frame Drawing: Headers, Subtitles & Info
+    // 4. Custom Frame Drawing: Dialog Card, Typography & UI Structure
     // -------------------------------------------------------------------------
     app.on_frame([&](arin::Renderer2D& r) {
-        // App Title Banner
+        // App Header Banner
         r.draw_text_centered(
-            "Arin32 GUI Library",
-            arin::Rect(0.0f, 40.0f, static_cast<float>(r.viewport_width()), 30.0f),
-            r.viewport_width() > 0 && is_dark_mode ? arin::Color::white() : arin::Color::from_hex(0x0F172A),
-            1.6f
+            "Arin32 & ArinOS - Interactive Button & Dialog Showcase",
+            arin::Rect(0.0f, 18.0f, static_cast<float>(r.viewport_width()), 24.0f),
+            arin::Color::from_hex(0x1F2937),
+            1.2f
         );
 
-        // Subtitle & OS Agnostic Note
+        // Subtitle note
         r.draw_text_centered(
-            "OpenGL 3.3 Core Profile * OS Agnostic * BSD License",
-            arin::Rect(0.0f, 80.0f, static_cast<float>(r.viewport_width()), 20.0f),
-            arin::Color::from_hex(0x94A3B8),
+            "Exact button shape, corner radius (4.5px), and dimensions matching ArinOS specification",
+            arin::Rect(0.0f, 42.0f, static_cast<float>(r.viewport_width()), 18.0f),
+            arin::Color::from_hex(0x4B5563),
+            0.9f
+        );
+
+        // --- Dialog Card Container ---
+        // 1. Soft Card Shadow
+        r.draw_shadow(
+            arin::Rect(dialog_x, dialog_y, dialog_w, dialog_h),
+            8.0f,
+            arin::Color(0.0f, 0.0f, 0.0f, 0.18f),
+            arin::Vec2(0.0f, 4.0f),
+            12.0f
+        );
+
+        // 2. White Card Background
+        r.draw_rounded_rect(
+            arin::Rect(dialog_x, dialog_y, dialog_w, dialog_h),
+            8.0f,
+            arin::Color::white(),
+            arin::Color::from_hex(0xE5E7EB),
             1.0f
         );
 
-        // Footer hint
+        // 3. Dialog Header & Body Text
+        r.draw_text(
+            "Save your work?",
+            arin::Vec2(dialog_x + 24.0f, dialog_y + 24.0f),
+            arin::Color::from_hex(0x111827),
+            1.3f
+        );
+
+        r.draw_text(
+            "Lorem ipsum dolor sit amet, adipisicing elit.",
+            arin::Vec2(dialog_x + 24.0f, dialog_y + 66.0f),
+            arin::Color::from_hex(0x374151),
+            0.95f
+        );
+
+        // 4. Checkbox Preview (18x18, corner radius 3.5px, 1px border)
+        const float chk_x = dialog_x + 24.0f;
+        const float chk_y = dialog_y + 98.0f;
+        r.draw_rounded_rect(
+            arin::Rect(chk_x, chk_y, 18.0f, 18.0f),
+            3.5f,
+            arin::Color::white(),
+            arin::Color::from_hex(0x9CA3AF),
+            1.0f
+        );
+
+        r.draw_text(
+            "Upload your content to the cloud.",
+            arin::Vec2(chk_x + 28.0f, chk_y + 1.0f),
+            arin::Color::from_hex(0x1F2937),
+            0.95f
+        );
+
+        // 5. Divider Line separating top card from footer
+        r.draw_rect(
+            arin::Rect(dialog_x, footer_y, dialog_w, 1.0f),
+            arin::Color::from_hex(0xE5E7EB)
+        );
+
+        // 6. Dialog Footer Background (#F3F3F3)
+        // Draw lower rounded section for the footer
+        r.draw_rounded_rect(
+            arin::Rect(dialog_x, footer_y + 1.0f, dialog_w, dialog_h - 191.0f),
+            8.0f,
+            arin::Color::from_hex(0xF3F4F6)
+        );
+
+        // Re-cover the upper half of the footer with a sharp rectangle so top corners remain straight
+        r.draw_rect(
+            arin::Rect(dialog_x, footer_y + 1.0f, dialog_w, 20.0f),
+            arin::Color::from_hex(0xF3F4F6)
+        );
+
+        // --- Bottom Palette Showcase Section ---
         r.draw_text_centered(
-            "Absurdly easy API: Add buttons, attach lambdas, and run!",
-            arin::Rect(0.0f, 520.0f, static_cast<float>(r.viewport_width()), 20.0f),
-            arin::Color::from_hex(0x64748B),
-            0.9f
+            "Extended Color Palette (Height: 32px, Radius: 4.5px):",
+            arin::Rect(0.0f, 395.0f, static_cast<float>(r.viewport_width()), 20.0f),
+            arin::Color::from_hex(0x1F2937),
+            0.95f
+        );
+
+        // Dynamic Status Bar
+        r.draw_text_centered(
+            dialog_status,
+            arin::Rect(0.0f, 490.0f, static_cast<float>(r.viewport_width()), 24.0f),
+            arin::Color::from_hex(0x111827),
+            1.0f
+        );
+
+        // Footer copyright info
+        r.draw_text_centered(
+            "Copyright (c) 2026, Arin32 & ArinOS Contributors * BSD 2-Clause License",
+            arin::Rect(0.0f, 560.0f, static_cast<float>(r.viewport_width()), 20.0f),
+            arin::Color::from_hex(0x4B5563),
+            0.85f
         );
     });
 
@@ -170,13 +286,14 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "==========================================================" << std::endl;
-    std::cout << " Arin32 Button Showcase started." << std::endl;
+    std::cout << " Arin32 & ArinOS Button Showcase started." << std::endl;
     std::cout << " OS: Linux / FreeBSD agnostic" << std::endl;
     std::cout << " License: BSD 2-Clause" << std::endl;
+    std::cout << " Contributors: Arin32 & ArinOS Contributors" << std::endl;
     std::cout << "==========================================================" << std::endl;
 
     // -------------------------------------------------------------------------
-    // 4. Run the Application Main Loop
+    // 5. Run the Application Main Loop
     // -------------------------------------------------------------------------
     app.run();
 
