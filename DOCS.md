@@ -319,18 +319,23 @@ Hardware-accelerated 2D rendering pipeline using OpenGL 3.3 Core profile shaders
 
 ### 4.6 `arin::Font`
 
-Zero-dependency embedded typography engine.
+Zero-dependency embedded typography engine powered by **Open Sans**.
 
 ```cpp
 #include <arin/font.hpp>
 ```
+
+- **Embedded Typeface**: Uses Open Sans SemiBold rasterized at standard 12px UI size.
+- **Offline & Standalone**: Requires no external TTF files or disk access at runtime.
+- **Font Extractor Tool**: Developers can re-bake any font using `tools/font_extractor.py` (see `tools/README.md`).
+- **Attribution**: Licensed under Apache 2.0; credited in `THIRDPARTY`.
 
 - `bool init_gl()`: Allocates and uploads the embedded 256x128 font atlas texture (`GL_RED`).
 - `Vec2 measure_text(const std::string& text, float scale = 1.0f) const`:
   Calculates exact width and height of rendered string in pixels.
 - `GlyphInfo get_glyph(char c) const`:
   Retrieves advance, UV texture coordinates, and dimensions for character `c` (ASCII 32 to 126).
-- `float line_height() const`: Base font line height in pixels.
+- `float line_height() const`: Base font line height in pixels (14.0px).
 
 ---
 
