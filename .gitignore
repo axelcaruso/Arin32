@@ -1,0 +1,11 @@
+build/
+bin/
+lib/
+*.o
+*.a
+*.so
+*.dylib
+*.ppm
+*.png
+.cache/
+compile_commands.json
