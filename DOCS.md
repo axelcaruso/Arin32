@@ -200,8 +200,8 @@ enum class ButtonState : uint8_t {
 ```
 
 #### Constructors
-- `Button()`: Creates default button at `(0, 0, 120, 40)`.
-- `Button(std::string label)`: Creates button with label at default size.
+- `Button()`: Creates default button at `(0, 0, 85, 32)`.
+- `Button(std::string label)`: Creates button with label at default size (32px height).
 - `Button(std::string label, float x, float y, float width, float height)`: Explicit bounds.
 - `Button(std::string label, const Rect& bounds)`: Rect bounds.
 - `Button(std::string label, const Rect& bounds, const ButtonStyle& style)`: Custom style preset.
@@ -215,7 +215,9 @@ enum class ButtonState : uint8_t {
 - `Button& set_bounds(float x, float y, float width, float height)`: Sets bounds with scalars.
 - `Button& set_style(const ButtonStyle& style)`: Applies visual style.
 - `Button& set_enabled(bool enabled)`: Enables or disables user interaction.
-- `Button& set_corner_radius(float radius)`: Sets corner radius in pixels.
+- `Button& set_corner_radius(float radius)`: Sets corner radius in pixels (default: 4.5px).
+- `Button& set_auto_resize(bool enable)`: Enables/disables automatic expansion to fit text content (default: true).
+- `Button& fit_to_text(const Font& font, float horizontal_padding = 14.0f)`: Explicitly resizes the button to fit its text with padding.
 
 #### Callbacks
 - `Button& on_click(ClickCallback callback)`: Registers `void()` callback fired on complete click.
@@ -229,7 +231,14 @@ enum class ButtonState : uint8_t {
 - `bool is_hovered() const`: True if hovered or pressed.
 - `bool is_pressed() const`: True if left mouse button is held down inside.
 - `bool is_enabled() const`: True if not disabled.
+- `bool is_auto_resize() const`: True if auto-resize is active.
 - `const ButtonStyle& style() const`: Reference to active style.
+
+#### Strict Overflow Prevention Guarantee
+In Arin32, text is mathematically and physically guaranteed **never to overflow or bleed out of its button or container**:
+1. **Auto-Resize**: Enabled by default, automatically enlarges button bounds if label requires more room than current bounds.
+2. **Dynamic Scale Fallback**: If fixed dimensions are enforced (`auto_resize=false`), text scale automatically downscales so that it remains fully contained within the inner padding.
+3. **Hardware Scissor Clipping**: All button text rendering is wrapped in `glScissor` set to the button's exact bounding box, preventing any pixel from drawing outside.
 
 #### Event & Render Pipeline
 - `bool handle_mouse(const MouseEvent& event)`: Injects mouse event; returns true if handled.

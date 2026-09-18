@@ -552,6 +552,32 @@ void Renderer2D::draw_text_centered(
     draw_text(text, Vec2(text_x, text_y), color, scale);
 }
 
+void Renderer2D::draw_text_centered_clipped(
+    const std::string& text,
+    const Rect& bounds,
+    const Color& color,
+    float scale
+) {
+    if (bounds.width <= 0.0f || bounds.height <= 0.0f) return;
+
+    // Flush pending text before applying scissor
+    flush_text_batch();
+
+    // Convert from top-left (Arin32) to bottom-left (OpenGL scissor coordinates)
+    int scissor_x = static_cast<int>(std::max(0.0f, bounds.x));
+    int scissor_y = m_viewport_height - static_cast<int>(bounds.y + bounds.height);
+    int scissor_w = static_cast<int>(bounds.width);
+    int scissor_h = static_cast<int>(bounds.height);
+
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(scissor_x, std::max(0, scissor_y), std::max(0, scissor_w), std::max(0, scissor_h));
+
+    draw_text_centered(text, bounds, color, scale);
+    flush_text_batch();
+
+    glDisable(GL_SCISSOR_TEST);
+}
+
 /**
  * @brief Flushes and renders all batched text quads to the screen.
  */

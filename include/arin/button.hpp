@@ -179,6 +179,28 @@ public:
      */
     Button& set_corner_radius(float radius);
 
+    /**
+     * @brief Enables or disables automatic width/height expansion to fit content text.
+     *
+     * When enabled (default: true), the button will automatically expand its dimensions
+     * to guarantee that text never overflows or touches borders.
+     *
+     * @param enable true to auto-expand to fit text, false to keep fixed bounds.
+     * @return Reference to this for chaining.
+     */
+    Button& set_auto_resize(bool enable);
+
+    /// @brief Checks if auto-resize is enabled.
+    bool is_auto_resize() const { return m_auto_resize; }
+
+    /**
+     * @brief Explicitly recalculates and resizes the button to tightly fit its label.
+     * @param font Font engine to measure text with.
+     * @param horizontal_padding Padding on left and right sides.
+     * @return Reference to this for chaining.
+     */
+    Button& fit_to_text(const Font& font, float horizontal_padding = 14.0f);
+
     // --- Event Callbacks ---
 
     /**
@@ -262,6 +284,7 @@ private:
 
     bool m_mouse_inside{false};
     bool m_pressed_inside{false};
+    bool m_auto_resize{true};
 
     ClickCallback m_click_cb;
     DetailedClickCallback m_detailed_click_cb;

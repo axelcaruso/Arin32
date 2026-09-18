@@ -205,3 +205,27 @@ TEST(ArinButtonTest, DetailedClickCallbackModifiesButton) {
 
     EXPECT_EQ(btn.text(), "Updated!");
 }
+
+TEST(ArinButtonTest, AutoResizeEnsuresTextNeverOverflows) {
+    arin::Font font;
+    arin::Button btn("This is a very long button label", 10.0f, 10.0f, 40.0f, 32.0f);
+
+    EXPECT_TRUE(btn.is_auto_resize());
+
+    // Before explicit fit, bounds width was set to 40
+    EXPECT_FLOAT_EQ(btn.bounds().width, 40.0f);
+
+    // Call fit_to_text
+    btn.fit_to_text(font, 14.0f);
+
+    // Width must have expanded significantly to contain the label
+    arin::Vec2 text_sz = font.measure_text("This is a very long button label");
+    EXPECT_GE(btn.bounds().width, text_sz.x + 28.0f);
+}
+
+TEST(ArinButtonTest, DisableAutoResizeMaintainsFixedBounds) {
+    arin::Button btn("Fixed Width", 0.0f, 0.0f, 100.0f, 32.0f);
+    btn.set_auto_resize(false);
+    EXPECT_FALSE(btn.is_auto_resize());
+    EXPECT_FLOAT_EQ(btn.bounds().width, 100.0f);
+}

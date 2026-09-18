@@ -196,10 +196,45 @@ bool Button::handle_mouse(const MouseEvent& event) {
     return false;
 }
 
+Button& Button::set_auto_resize(bool enable) {
+    m_auto_resize = enable;
+    return *this;
+}
+
+Button& Button::fit_to_text(const Font& font, float horizontal_padding) {
+    Vec2 size = font.measure_text(m_text, m_style.text_scale);
+    m_bounds.width = size.x + horizontal_padding * 2.0f;
+    m_bounds.height = std::max(m_bounds.height, size.y + m_style.padding.top + m_style.padding.bottom);
+    return *this;
+}
+
 /**
- * @brief Renders the button with appropriate colors and typography.
+ * @brief Renders the button with appropriate colors, guaranteed containment, and typography.
  */
 void Button::render(Renderer2D& renderer) {
+    // 1. Content-driven Sizing & Overflow Prevention Guarantee
+    // Text can NEVER bleed outside the button boundary.
+    Vec2 text_size = renderer.font().measure_text(m_text, m_style.text_scale);
+    float effective_scale = m_style.text_scale;
+
+    if (m_auto_resize) {
+        // Automatically expand the button if its label needs more room
+        float min_w = text_size.x + m_style.padding.left + m_style.padding.right;
+        float min_h = text_size.y + m_style.padding.top + m_style.padding.bottom;
+        if (m_bounds.width < min_w) {
+            m_bounds.width = min_w;
+        }
+        if (m_bounds.height < min_h) {
+            m_bounds.height = min_h;
+        }
+    } else {
+        // If fixed dimensions were explicitly enforced, dynamically scale text down to fit
+        float avail_w = m_bounds.width - m_style.padding.left - m_style.padding.right;
+        if (avail_w > 0.0f && text_size.x > avail_w) {
+            effective_scale *= (avail_w / text_size.x);
+        }
+    }
+
     Color bg_color;
     Color text_color;
     Color border_color;
@@ -252,12 +287,12 @@ void Button::render(Renderer2D& renderer) {
         m_style.border_width
     );
 
-    // Render centered button label
-    renderer.draw_text_centered(
+    // Render centered button label with guaranteed hardware scissor clipping
+    renderer.draw_text_centered_clipped(
         m_text,
         m_bounds,
         text_color,
-        m_style.text_scale
+        effective_scale
     );
 }
 

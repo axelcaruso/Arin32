@@ -170,6 +170,23 @@ public:
     );
 
     /**
+     * @brief Renders centered text with guaranteed hardware scissor clipping to container bounds.
+     *
+     * Prevents text pixels from ever bleeding outside the target container.
+     *
+     * @param text Text string.
+     * @param bounds Bounding rectangle to center inside and clip against.
+     * @param color Text color.
+     * @param scale Text scale multiplier.
+     */
+    void draw_text_centered_clipped(
+        const std::string& text,
+        const Rect& bounds,
+        const Color& color,
+        float scale = 1.0f
+    );
+
+    /**
      * @brief Access the embedded Font instance for measurement and metrics.
      */
     Font& font() { return m_font; }
