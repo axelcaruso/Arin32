@@ -11,3 +11,4 @@ lib/
 compile_commands.json
 *html
 *jpg
+dist/

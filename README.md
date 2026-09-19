@@ -37,6 +37,13 @@ Examples and tests are enabled by default and can be disabled with `-DARIN_BUILD
 
 This README is intentionally a short summary. Complete API reference, architecture overview, widget-by-widget usage, and step-by-step instructions for porting Arin32 to a custom OS are in [DOCS.md](DOCS.md). Third-party licensing notices are in [THIRDPARTY](THIRDPARTY).
 
+## Contributing & Community
+
+Contributions are welcome! Please review our community guidelines before submitting pull requests or opening issues:
+- [Contributing Guide](CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Security Policy](SECURITY.md)
+
 ## License
 
 Arin32 is distributed under the BSD 2-Clause License. See [LICENSE](LICENSE) for details.

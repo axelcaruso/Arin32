@@ -1205,6 +1205,36 @@ To take a headless/automated screenshot:
 ./build/examples/button_demo --screenshot preview.ppm
 ```
 
+### Distribution Packaging (Static .a, Shared .so, 7z & SHA256)
+
+Arin32 provides an automated distribution pipeline targeting production deployment with maximum compiler optimization (`-O3`) and Position-Independent Code (`-fPIC`).
+
+Building the distribution bundle:
+```bash
+# 1. Build release binaries (both libarin32.a and libarin32.so)
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
+
+# 2. Package to 7z with maximum compression and generate SHA256 checksums
+cmake --build build --target dist
+
+# Or run the packaging script directly from dist/:
+cd dist
+python3 package.py
+
+# Verify archive and uncompressed file integrity:
+sha256sum -c SHA256
+7z t arin32.7z
+```
+
+The resulting `dist/` directory contains:
+- `libarin32.a`: Static archive compiled with `-O3`
+- `libarin32.so`: Shared object dynamically linkable with `-O3`
+- `include/`: Arin32 C++ public API headers
+- `assets/`: Vector icons (SVG) and TrueType fonts
+- `arin32.7z`: Solid LZMA2 archive compressed at maximum level (`-mx=9`)
+- `SHA256`: Plain-text checksum manifest covering `arin32.7z` and every uncompressed file
+
 ---
 
 ## 6. License (BSD 2-Clause)

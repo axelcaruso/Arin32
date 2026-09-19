@@ -1,6 +1,6 @@
 find_package(GTest REQUIRED)
 
-add_executable(arin_tests
+set(TEST_SOURCES
     test_types.cpp
     test_button.cpp
     test_checkbox.cpp
@@ -15,11 +15,22 @@ add_executable(arin_tests
     test_svg.cpp
 )
 
+# Static library test target
+add_executable(arin_tests ${TEST_SOURCES})
 target_link_libraries(arin_tests PRIVATE
     arin32
     GTest::gtest
     GTest::gtest_main
 )
 
+# Shared library (.so) test target
+add_executable(arin_tests_shared ${TEST_SOURCES})
+target_link_libraries(arin_tests_shared PRIVATE
+    arin32_shared
+    GTest::gtest
+    GTest::gtest_main
+)
+
 include(GoogleTest)
 gtest_discover_tests(arin_tests)
+gtest_discover_tests(arin_tests_shared)
