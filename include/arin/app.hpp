@@ -34,6 +34,7 @@
 #include "window.hpp"
 #include "renderer.hpp"
 #include "button.hpp"
+#include "progress_bar.hpp"
 #include <memory>
 #include <vector>
 #include <functional>
@@ -113,6 +114,44 @@ public:
     std::shared_ptr<Button> add_button(std::shared_ptr<Button> button);
 
     /**
+     * @brief Adds a new progress bar with specified geometry and initial value.
+     *
+     * Automatically registers the progress bar for frame rendering and animation updates.
+     *
+     * @param x Left coordinate in pixels.
+     * @param y Top coordinate in pixels.
+     * @param width Width in pixels.
+     * @param height Height in pixels.
+     * @param value Initial value (default: 0.0f).
+     * @param min Minimum range value (default: 0.0f).
+     * @param max Maximum range value (default: 100.0f).
+     * @return Shared pointer to the created ProgressBar.
+     */
+    std::shared_ptr<ProgressBar> add_progress_bar(
+        float x,
+        float y,
+        float width,
+        float height,
+        float value = 0.0f,
+        float min = 0.0f,
+        float max = 100.0f
+    );
+
+    /**
+     * @brief Adds an existing progress bar instance to the application.
+     * @param bar ProgressBar object to manage.
+     * @return Shared pointer to the added ProgressBar.
+     */
+    std::shared_ptr<ProgressBar> add_progress_bar(ProgressBar bar);
+
+    /**
+     * @brief Adds a pre-allocated progress bar shared pointer.
+     * @param bar Shared pointer to progress bar.
+     * @return The same shared pointer.
+     */
+    std::shared_ptr<ProgressBar> add_progress_bar(std::shared_ptr<ProgressBar> bar);
+
+    /**
      * @brief Registers an optional custom rendering hook called every frame.
      *
      * Allows drawing custom shapes, text, or background elements alongside buttons.
@@ -156,6 +195,7 @@ private:
     Renderer2D m_renderer;
     Theme m_theme{Theme::dark()};
     std::vector<std::shared_ptr<Button>> m_buttons;
+    std::vector<std::shared_ptr<ProgressBar>> m_progress_bars;
     FrameCallback m_custom_frame_cb;
     FrameCallback m_after_frame_cb;
     bool m_running{true};

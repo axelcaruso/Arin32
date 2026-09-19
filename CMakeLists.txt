@@ -26,6 +26,7 @@ add_library(arin32
     src/font.cpp
     src/renderer.cpp
     src/button.cpp
+    src/progress_bar.cpp
     src/window.cpp
     src/app.cpp
 )

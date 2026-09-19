@@ -28,8 +28,8 @@
 
 /**
  * @file button_demo.cpp
- * @brief Interactive showcase demonstrating Arin32's Button widget with the exact
- *        visual styling, dimensions, and corner radius from the ArinOS design reference.
+ * @brief Interactive showcase demonstrating Arin32's Buttons and Windows 10 Progress Bars
+ *        with 1:1 visual concordance, animated shimmer sweeps, and traveling marquee chunks.
  */
 
 #include <arin/arin.hpp>
@@ -65,27 +65,26 @@ int main(int argc, char** argv) {
     }
 
     // -------------------------------------------------------------------------
-    // 1. Create the Application Window (800x600 pixels)
+    // 1. Create the Application Window (860x720 pixels)
     // -------------------------------------------------------------------------
-    arin::App app("Arin32 & ArinOS - Button Showcase", 800, 600);
+    arin::App app("Arin32 & ArinOS - UI Showcase", 860, 720);
 
-    // Default neutral grey background for the desktop/window canvas
+    // Default neutral grey background for the desktop canvas
     app.theme().background_color = arin::Color::from_hex(0xA8A8A8);
 
-    std::string dialog_status = "Status: Waiting for user action...";
+    std::string dialog_status = "Status: Ready. Interact with buttons or progress bars.";
     int action_counter = 0;
-    bool checkbox_checked = false;
 
     // -------------------------------------------------------------------------
     // 2. Exact Dialog Box Buttons (Save, Don't Save, Cancel)
     //    Dimensions: Height = 32px, Corner Radius = 4.5px, exact styling
     // -------------------------------------------------------------------------
-    const float dialog_x = 215.0f;
-    const float dialog_y = 80.0f;
+    const float dialog_x = 245.0f;
+    const float dialog_y = 75.0f;
     const float dialog_w = 370.0f;
-    const float dialog_h = 250.0f;
-    const float footer_y = dialog_y + 175.0f;
-    const float btn_y = footer_y + 20.0f;
+    const float dialog_h = 210.0f;
+    const float footer_y = dialog_y + 145.0f;
+    const float btn_y = footer_y + 16.0f;
 
     // Button 1: "Save" (Primary Accent Blue #0067C0, 82x32, radius 4.5)
     auto save_btn = app.add_button("Save", dialog_x + 24.0f, btn_y, 82.0f, 32.0f);
@@ -93,7 +92,7 @@ int main(int argc, char** argv) {
 
     save_btn->on_click([&]() {
         action_counter++;
-        dialog_status = "Status: Work Saved! (" + std::to_string(action_counter) + ")";
+        dialog_status = "Status: Work Saved! (Action #" + std::to_string(action_counter) + ")";
         std::cout << "[Arin32 Event] 'Save' button clicked! Action #" << action_counter << std::endl;
     });
 
@@ -103,7 +102,7 @@ int main(int argc, char** argv) {
 
     dont_save_btn->on_click([&]() {
         action_counter++;
-        dialog_status = "Status: Work Discarded. (" + std::to_string(action_counter) + ")";
+        dialog_status = "Status: Work Discarded. (Action #" + std::to_string(action_counter) + ")";
         std::cout << "[Arin32 Event] 'Don't Save' button clicked! Action #" << action_counter << std::endl;
     });
 
@@ -113,42 +112,96 @@ int main(int argc, char** argv) {
 
     cancel_btn->on_click([&]() {
         action_counter++;
-        dialog_status = "Status: Action Cancelled. (" + std::to_string(action_counter) + ")";
+        dialog_status = "Status: Action Cancelled. (Action #" + std::to_string(action_counter) + ")";
         std::cout << "[Arin32 Event] 'Cancel' button clicked! Action #" << action_counter << std::endl;
     });
 
     // -------------------------------------------------------------------------
-    // 3. Additional Palette Showcase: Success, Danger, Outline, Disabled
-    //    All sharing the exact same 32px height, 4.5px radius, and form factor!
+    // 3. Windows 10 Style Progress Bars (Determinate & Indeterminate)
     // -------------------------------------------------------------------------
-    const float palette_y = 415.0f;
+    const float pb_x = 180.0f;
+    const float pb_w = 500.0f;
+    const float pb_h = 18.0f;
 
-    auto success_btn = app.add_button("Success", 125.0f, palette_y, 100.0f, 32.0f);
+    // --- Determinate Progress Bar (0 to 100 with animated white shimmer sweep) ---
+    auto det_bar = app.add_progress_bar(pb_x, 340.0f, pb_w, pb_h, 68.0f, 0.0f, 100.0f);
+    det_bar->set_style(arin::ProgressBarStyle::green());
+
+    // Controls for Determinate Bar
+    auto dec_btn = app.add_button("- 10%", pb_x, 370.0f, 75.0f, 28.0f);
+    dec_btn->set_style(arin::ButtonStyle::secondary());
+    dec_btn->on_click([&]() {
+        det_bar->set_value(det_bar->value() - 10.0f);
+        dialog_status = "Determinate Progress: " + std::to_string(static_cast<int>(det_bar->percentage() * 100.0f)) + "%";
+    });
+
+    auto inc_btn = app.add_button("+ 10%", pb_x + 85.0f, 370.0f, 75.0f, 28.0f);
+    inc_btn->set_style(arin::ButtonStyle::secondary());
+    inc_btn->on_click([&]() {
+        det_bar->set_value(det_bar->value() + 10.0f);
+        dialog_status = "Determinate Progress: " + std::to_string(static_cast<int>(det_bar->percentage() * 100.0f)) + "%";
+    });
+
+    auto green_btn = app.add_button("Green Style", pb_x + 170.0f, 370.0f, 95.0f, 28.0f);
+    green_btn->set_style(arin::ButtonStyle::secondary());
+    green_btn->on_click([&]() {
+        det_bar->set_style(arin::ProgressBarStyle::green());
+        dialog_status = "Progress Bar Style: Windows 10 Green (#06B025)";
+    });
+
+    auto blue_btn = app.add_button("Blue Style", pb_x + 275.0f, 370.0f, 90.0f, 28.0f);
+    blue_btn->set_style(arin::ButtonStyle::secondary());
+    blue_btn->on_click([&]() {
+        det_bar->set_style(arin::ProgressBarStyle::blue());
+        dialog_status = "Progress Bar Style: Accent Blue (#0067C0)";
+    });
+
+    // --- Indeterminate Progress Bar (Traveling Chunk "un cachito" marquee) ---
+    auto indet_bar = app.add_progress_bar(pb_x, 436.0f, pb_w, pb_h);
+    indet_bar->set_indeterminate(true);
+    indet_bar->set_style(arin::ProgressBarStyle::green());
+
+    auto toggle_btn = app.add_button("Toggle Mode", pb_x, 466.0f, 110.0f, 28.0f);
+    toggle_btn->set_style(arin::ButtonStyle::secondary());
+    toggle_btn->on_click([&]() {
+        if (indet_bar->is_indeterminate()) {
+            indet_bar->set_indeterminate(false);
+            indet_bar->set_value(40.0f);
+            dialog_status = "Second Bar Mode switched to: Determinate (40%)";
+        } else {
+            indet_bar->set_indeterminate(true);
+            dialog_status = "Second Bar Mode switched to: Indeterminate Traveling Chunk";
+        }
+    });
+
+    // -------------------------------------------------------------------------
+    // 4. Additional Palette Showcase: Success, Danger, Outline, Disabled
+    // -------------------------------------------------------------------------
+    const float palette_y = 530.0f;
+
+    auto success_btn = app.add_button("Success", 155.0f, palette_y, 100.0f, 32.0f);
     success_btn->set_style(arin::ButtonStyle::success());
     success_btn->on_click([&]() {
         dialog_status = "Status: Success action triggered.";
-        std::cout << "[Arin32 Event] Success button clicked!\n";
     });
 
-    auto danger_btn = app.add_button("Danger", 237.0f, palette_y, 100.0f, 32.0f);
+    auto danger_btn = app.add_button("Danger", 267.0f, palette_y, 100.0f, 32.0f);
     danger_btn->set_style(arin::ButtonStyle::danger());
     danger_btn->on_click([&]() {
         dialog_status = "Status: Danger action triggered.";
-        std::cout << "[Arin32 Event] Danger button clicked!\n";
     });
 
-    auto outline_btn = app.add_button("Outline", 349.0f, palette_y, 100.0f, 32.0f);
+    auto outline_btn = app.add_button("Outline", 379.0f, palette_y, 100.0f, 32.0f);
     outline_btn->set_style(arin::ButtonStyle::outline(arin::Color::from_hex(0x0067C0)));
     outline_btn->on_click([&]() {
         dialog_status = "Status: Outline button clicked.";
-        std::cout << "[Arin32 Event] Outline button clicked!\n";
     });
 
-    auto disabled_btn = app.add_button("Disabled", 461.0f, palette_y, 100.0f, 32.0f);
+    auto disabled_btn = app.add_button("Disabled", 491.0f, palette_y, 100.0f, 32.0f);
     disabled_btn->set_style(arin::ButtonStyle::secondary())
                 .set_enabled(false);
 
-    auto exit_btn = app.add_button("Exit Demo", 573.0f, palette_y, 100.0f, 32.0f);
+    auto exit_btn = app.add_button("Exit Demo", 603.0f, palette_y, 100.0f, 32.0f);
     exit_btn->set_style(arin::ButtonStyle::secondary());
     exit_btn->on_click([&]() {
         std::cout << "[Arin32 Event] Closing demo application.\n";
@@ -156,27 +209,26 @@ int main(int argc, char** argv) {
     });
 
     // -------------------------------------------------------------------------
-    // 4. Custom Frame Drawing: Dialog Card, Typography & UI Structure
+    // 5. Custom Frame Drawing: Dialog Card, Typography & UI Structure
     // -------------------------------------------------------------------------
     app.on_frame([&](arin::Renderer2D& r) {
         // App Header Banner
         r.draw_text_centered(
-            "Arin32 & ArinOS - Interactive Button & Dialog Showcase",
-            arin::Rect(0.0f, 18.0f, static_cast<float>(r.viewport_width()), 24.0f),
+            "Arin32 & ArinOS - Interactive Button & Progress Bar Showcase",
+            arin::Rect(0.0f, 15.0f, static_cast<float>(r.viewport_width()), 24.0f),
             arin::Color::from_hex(0x1F2937),
             1.2f
         );
 
         // Subtitle note
         r.draw_text_centered(
-            "Exact button shape, corner radius (4.5px), and dimensions matching ArinOS specification",
-            arin::Rect(0.0f, 42.0f, static_cast<float>(r.viewport_width()), 18.0f),
+            "1:1 Windows 10 modern flat aesthetic: buttons, determinate (0-100%) & indeterminate progress bars",
+            arin::Rect(0.0f, 38.0f, static_cast<float>(r.viewport_width()), 18.0f),
             arin::Color::from_hex(0x4B5563),
             0.9f
         );
 
         // --- Dialog Card Container ---
-        // 1. Soft Card Shadow
         r.draw_shadow(
             arin::Rect(dialog_x, dialog_y, dialog_w, dialog_h),
             8.0f,
@@ -185,7 +237,6 @@ int main(int argc, char** argv) {
             12.0f
         );
 
-        // 2. White Card Background
         r.draw_rounded_rect(
             arin::Rect(dialog_x, dialog_y, dialog_w, dialog_h),
             8.0f,
@@ -194,24 +245,23 @@ int main(int argc, char** argv) {
             1.0f
         );
 
-        // 3. Dialog Header & Body Text
         r.draw_text(
             "Save your work?",
-            arin::Vec2(dialog_x + 24.0f, dialog_y + 24.0f),
+            arin::Vec2(dialog_x + 24.0f, dialog_y + 20.0f),
             arin::Color::from_hex(0x111827),
             1.3f
         );
 
         r.draw_text(
             "Lorem ipsum dolor sit amet, adipisicing elit.",
-            arin::Vec2(dialog_x + 24.0f, dialog_y + 66.0f),
+            arin::Vec2(dialog_x + 24.0f, dialog_y + 56.0f),
             arin::Color::from_hex(0x374151),
             0.95f
         );
 
-        // 4. Checkbox Preview (18x18, corner radius 3.5px, 1px border)
+        // Checkbox Preview (18x18, corner radius 3.5px, 1px border)
         const float chk_x = dialog_x + 24.0f;
-        const float chk_y = dialog_y + 98.0f;
+        const float chk_y = dialog_y + 86.0f;
         r.draw_rounded_rect(
             arin::Rect(chk_x, chk_y, 18.0f, 18.0f),
             3.5f,
@@ -227,30 +277,46 @@ int main(int argc, char** argv) {
             0.95f
         );
 
-        // 5. Divider Line separating top card from footer
+        // Divider Line separating top card from footer
         r.draw_rect(
             arin::Rect(dialog_x, footer_y, dialog_w, 1.0f),
             arin::Color::from_hex(0xE5E7EB)
         );
 
-        // 6. Dialog Footer Background (#F3F3F3)
-        // Draw lower rounded section for the footer
+        // Dialog Footer Background (#F3F3F3)
         r.draw_rounded_rect(
-            arin::Rect(dialog_x, footer_y + 1.0f, dialog_w, dialog_h - 191.0f),
+            arin::Rect(dialog_x, footer_y + 1.0f, dialog_w, dialog_h - 146.0f),
             8.0f,
             arin::Color::from_hex(0xF3F4F6)
         );
 
-        // Re-cover the upper half of the footer with a sharp rectangle so top corners remain straight
         r.draw_rect(
             arin::Rect(dialog_x, footer_y + 1.0f, dialog_w, 20.0f),
             arin::Color::from_hex(0xF3F4F6)
         );
 
+        // --- Progress Bars Section ---
+        std::string det_label = "Copying 1,420 items to system disk... (" +
+                                std::to_string(static_cast<int>(det_bar->percentage() * 100.0f)) +
+                                "% - Determinate with Shimmer Sweep)";
+        r.draw_text(
+            det_label,
+            arin::Vec2(pb_x, 320.0f),
+            arin::Color::from_hex(0x1F2937),
+            0.92f
+        );
+
+        r.draw_text(
+            "Searching for updates... (Indeterminate Traveling Marquee Chunk)",
+            arin::Vec2(pb_x, 416.0f),
+            arin::Color::from_hex(0x1F2937),
+            0.92f
+        );
+
         // --- Bottom Palette Showcase Section ---
         r.draw_text_centered(
             "Extended Color Palette (Height: 32px, Radius: 4.5px):",
-            arin::Rect(0.0f, 395.0f, static_cast<float>(r.viewport_width()), 20.0f),
+            arin::Rect(0.0f, 508.0f, static_cast<float>(r.viewport_width()), 20.0f),
             arin::Color::from_hex(0x1F2937),
             0.95f
         );
@@ -258,7 +324,7 @@ int main(int argc, char** argv) {
         // Dynamic Status Bar
         r.draw_text_centered(
             dialog_status,
-            arin::Rect(0.0f, 490.0f, static_cast<float>(r.viewport_width()), 24.0f),
+            arin::Rect(0.0f, 582.0f, static_cast<float>(r.viewport_width()), 24.0f),
             arin::Color::from_hex(0x111827),
             1.0f
         );
@@ -266,17 +332,21 @@ int main(int argc, char** argv) {
         // Footer copyright info
         r.draw_text_centered(
             "Copyright (c) 2026, Arin32 & ArinOS Contributors * BSD 2-Clause License",
-            arin::Rect(0.0f, 560.0f, static_cast<float>(r.viewport_width()), 20.0f),
+            arin::Rect(0.0f, 680.0f, static_cast<float>(r.viewport_width()), 20.0f),
             arin::Color::from_hex(0x4B5563),
             0.85f
         );
     });
 
-    // If requested, take an automated screenshot after buttons render and close
+    // If requested, take an automated screenshot after widgets render and close
     if (!screenshot_path.empty()) {
         int captured_frames = 0;
         app.on_after_frame([&](arin::Renderer2D& r) {
             captured_frames++;
+            // Lock visible animation phases for optimal screenshot demonstration
+            det_bar->set_anim_phase(0.40f);
+            indet_bar->set_anim_phase(0.45f);
+
             if (captured_frames >= 2) {
                 save_screenshot_ppm(screenshot_path, r.viewport_width(), r.viewport_height());
                 std::cout << "[Arin32] Frame rendered! Screenshot saved to " << screenshot_path << std::endl;
@@ -286,14 +356,14 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "==========================================================" << std::endl;
-    std::cout << " Arin32 & ArinOS Button Showcase started." << std::endl;
+    std::cout << " Arin32 & ArinOS UI Showcase started." << std::endl;
     std::cout << " OS: Linux / FreeBSD agnostic" << std::endl;
     std::cout << " License: BSD 2-Clause" << std::endl;
     std::cout << " Contributors: Arin32 & ArinOS Contributors" << std::endl;
     std::cout << "==========================================================" << std::endl;
 
     // -------------------------------------------------------------------------
-    // 5. Run the Application Main Loop
+    // 6. Run the Application Main Loop
     // -------------------------------------------------------------------------
     app.run();
 

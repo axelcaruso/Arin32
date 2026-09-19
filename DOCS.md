@@ -13,12 +13,14 @@ Welcome to the official developer documentation for **Arin32**, a lightweight, h
    - [4.1 `arin::App`](#41-arinapp)
    - [4.2 `arin::Button`](#42-arinbutton)
    - [4.3 `arin::ButtonStyle`](#43-arinbuttonstyle)
-   - [4.4 `arin::Theme`](#44-arintheme)
-   - [4.5 `arin::Renderer2D`](#45-arinrenderer2d)
-   - [4.6 `arin::Font`](#46-arinfont)
-   - [4.7 `arin::Window` & `arin::IPlatformBackend`](#47-arinwindow--ariniplatformbackend)
-   - [4.8 Geometric & Color Types (`Vec2`, `Rect`, `Color`, `Padding`)](#48-geometric--color-types)
-   - [4.9 Input System (`InputState`, `MouseEvent`, `MouseButton`, `InputAction`)](#49-input-system)
+   - [4.4 `arin::ProgressBar` & `arin::ProgressBarMode`](#44-arinprogressbar--arinprogressbarmode)
+   - [4.5 `arin::ProgressBarStyle`](#45-arinprogressbarstyle)
+   - [4.6 `arin::Theme`](#46-arintheme)
+   - [4.7 `arin::Renderer2D`](#47-arinrenderer2d)
+   - [4.8 `arin::Font`](#48-arinfont)
+   - [4.9 `arin::Window` & `arin::IPlatformBackend`](#49-arinwindow--ariniplatformbackend)
+   - [4.10 Geometric & Color Types (`Vec2`, `Rect`, `Color`, `Padding`)](#410-geometric--color-types)
+   - [4.11 Input System (`InputState`, `MouseEvent`, `MouseButton`, `InputAction`)](#411-input-system)
 5. [Building, Running, and Testing](#5.building-running-and-testing)
    - [Linux Build](#linux-build)
    - [FreeBSD Build](#freebsd-build)
@@ -167,6 +169,12 @@ The central coordinator managing window lifecycle, OpenGL context initialization
   Adds a copy of an existing button.
 - `std::shared_ptr<Button> add_button(std::shared_ptr<Button> button)`:
   Adds a pre-allocated button shared pointer.
+- `std::shared_ptr<ProgressBar> add_progress_bar(float x, float y, float width, float height, float value = 0.0f, float min = 0.0f, float max = 100.0f)`:
+  Creates, registers, and automatically manages frame rendering and animation updates for a new progress bar.
+- `std::shared_ptr<ProgressBar> add_progress_bar(ProgressBar bar)`:
+  Adds a copy of an existing progress bar.
+- `std::shared_ptr<ProgressBar> add_progress_bar(std::shared_ptr<ProgressBar> bar)`:
+  Adds a pre-allocated progress bar shared pointer.
 - `void on_frame(FrameCallback cb)`:
   Registers a user rendering callback executed every frame before buttons are drawn (ideal for titles, backgrounds, panels).
 - `void on_after_frame(FrameCallback cb)`:
@@ -280,7 +288,82 @@ Defines colors, borders, and dimensions across all button states.
 
 ---
 
-### 4.4 `arin::Theme`
+### 4.4 `arin::ProgressBar` & `arin::ProgressBarMode`
+
+A modern, hardware-accelerated progress bar widget designed to strictly match the flat aesthetic of Windows 10 with 1:1 visual concordance, subtle 1.0px borders, and GPU-driven animations.
+
+```cpp
+#include <arin/progress_bar.hpp>
+```
+
+#### Operating Modes (`ProgressBarMode`)
+- `ProgressBarMode::Determinate`:
+  Quantified progress mode (default: 0 to 100%). Renders an active fill segment proportional to current progress, traversed by an animated, continuous soft-white shimmer sweep ("la cosita blanca que va avanzando").
+- `ProgressBarMode::Indeterminate`:
+  Continuous activity / marquee mode with unknown duration. A smooth accent slice ("un cachito que va de izquierda a derecha") with a soft central specular highlight glides continuously across the track.
+
+#### Constructors
+- `ProgressBar()`: Constructs default 260x20 progress bar at (0, 0).
+- `ProgressBar(float x, float y, float width = 260.0f, float height = 20.0f)`: Constructs progress bar at position with size.
+- `ProgressBar(float x, float y, float width, float height, float value, float min = 0.0f, float max = 100.0f)`: Constructs progress bar with position, size, initial value, and range.
+- `ProgressBar(const Rect& bounds)`: Constructs with bounding box.
+- `ProgressBar(const Rect& bounds, ProgressBarMode mode)`: Constructs with bounding box and mode.
+
+#### Fluent Setters
+- `set_mode(ProgressBarMode mode)`: Switches between Determinate and Indeterminate.
+- `set_indeterminate(bool indeterminate)`: Quick helper to toggle marquee mode.
+- `set_value(float value)`: Sets current progress value (automatically clamped to `[min, max]`).
+- `set_range(float min_val, float max_val)`: Configures lower and upper bounds.
+- `set_bounds(const Rect& bounds)` / `set_bounds(float x, float y, float w, float h)`: Updates geometry.
+- `set_position(float x, float y)` / `set_size(float width, float height)`: Updates position or size.
+- `set_style(const ProgressBarStyle& style)`: Applies visual style.
+- `set_fill_color(const Color& color)`: Quick setter for active accent fill color.
+- `set_track_color(const Color& color)`: Quick setter for background track color.
+- `set_corner_radius(float radius)`: Quick setter for corner curvature.
+- `set_speed(float speed)`: Multiplies animation speed (1.0 = standard rate).
+- `set_anim_phase(float phase)`: Manually sets animation phase (ideal for deterministic tests or screenshots).
+
+#### Queries
+- `float value() const`: Current value.
+- `float min_value() const`: Lower bound.
+- `float max_value() const`: Upper bound.
+- `float percentage() const`: Normalized fraction in range `[0.0, 1.0]`.
+- `float anim_phase() const`: Continuous phase timer.
+- `ProgressBarMode mode() const`: Current mode.
+- `bool is_indeterminate() const`: True if in marquee mode.
+- `const Rect& bounds() const`: Bounding box.
+- `const ProgressBarStyle& style() const`: Active styling parameters.
+
+#### Lifecycle & Rendering
+- `void update(float dt)`: Advances animation phase based on delta time and style speed. Automatically called by `App::run()`.
+- `void render(Renderer2D& renderer)`: Draws track, border, fill, and animated sweeps in a single anti-aliased fragment shader pass.
+
+---
+
+### 4.5 `arin::ProgressBarStyle`
+
+Visual configuration for `ProgressBar` matching Windows 10 flat modern design specifications.
+
+```cpp
+#include <arin/progress_bar.hpp>
+```
+
+#### Fields
+- `Color track_color`: Background track color (default: light slate grey `#E5E7EB`).
+- `Color fill_color`: Active progress color (default: Windows 10 Green `#06B025`).
+- `Color border_color`: Boundary border stroke (default: subtle grey `#D1D5DB`).
+- `float border_width`: Border thickness in pixels (default: 1.0f).
+- `float corner_radius`: Corner curvature radius in pixels (default: 2.5f).
+- `float animation_speed`: Speed multiplier for shimmer and marquee sweeps (default: 0.85f).
+
+#### Preset Generators
+- `static ProgressBarStyle green()`: Windows 10 classic green progress (`#06B025`).
+- `static ProgressBarStyle blue()`: Windows 10 / ArinOS accent blue (`#0067C0`).
+- `static ProgressBarStyle dark()`: Dark mode theme with dark slate track (`#27272A`) and green fill.
+
+---
+
+### 4.6 `arin::Theme`
 
 Global theme definition holding window background clear colors and default button styles.
 
@@ -290,7 +373,7 @@ Global theme definition holding window background clear colors and default butto
 
 ---
 
-### 4.5 `arin::Renderer2D`
+### 4.7 `arin::Renderer2D`
 
 Hardware-accelerated 2D rendering pipeline using OpenGL 3.3 Core profile shaders.
 
@@ -309,15 +392,19 @@ Hardware-accelerated 2D rendering pipeline using OpenGL 3.3 Core profile shaders
   Draws anti-aliased rounded rectangle via fragment shader Signed Distance Field.
 - `void draw_shadow(const Rect& rect, float corner_radius, const Color& shadow_color, const Vec2& offset, float blur)`:
   Draws soft Gaussian drop shadow.
+- `void draw_progress_bar(const Rect& rect, float corner_radius, const Color& track_color, const Color& fill_color, const Color& border_color, float border_width, float fill_fraction, float anim_phase, bool is_indeterminate)`:
+  Draws modern Windows 10 style progress bar with 1px border, determinate fill with animated cosine shimmer sweep, or indeterminate traveling marquee chunk.
 - `void draw_text(const std::string& text, const Vec2& position, const Color& color, float scale = 1.0f)`:
   Batches and draws text at coordinates.
 - `void draw_text_centered(const std::string& text, const Rect& bounds, const Color& color, float scale = 1.0f)`:
   Measures string and renders centered within bounding box.
+- `void draw_text_centered_clipped(const std::string& text, const Rect& bounds, const Color& color, float scale = 1.0f)`:
+  Renders centered text strictly clipped to bounding rectangle using `glScissor`.
 - `Font& font()`: Access embedded font engine.
 
 ---
 
-### 4.6 `arin::Font`
+### 4.8 `arin::Font`
 
 Zero-dependency embedded typography engine powered by **Open Sans**.
 
@@ -339,7 +426,7 @@ Zero-dependency embedded typography engine powered by **Open Sans**.
 
 ---
 
-### 4.7 `arin::Window` & `arin::IPlatformBackend`
+### 4.9 `arin::Window` & `arin::IPlatformBackend`
 
 OS abstraction isolating window creation, swap buffers, and event polling.
 
@@ -349,7 +436,7 @@ OS abstraction isolating window creation, swap buffers, and event polling.
 
 ---
 
-### 4.8 Geometric & Color Types
+### 4.10 Geometric & Color Types
 
 ```cpp
 #include <arin/types.hpp>
@@ -378,7 +465,7 @@ OS abstraction isolating window creation, swap buffers, and event polling.
 
 ---
 
-### 4.9 Input System
+### 4.11 Input System
 
 ```cpp
 #include <arin/input.hpp>

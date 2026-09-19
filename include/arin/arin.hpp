@@ -43,6 +43,7 @@
 #include "font.hpp"
 #include "renderer.hpp"
 #include "button.hpp"
+#include "progress_bar.hpp"
 #include "window.hpp"
 #include "app.hpp"
 

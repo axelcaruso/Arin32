@@ -187,6 +187,31 @@ public:
     );
 
     /**
+     * @brief Draws a modern Windows 10 style progress bar with hardware shimmer animation.
+     *
+     * @param rect Bounding box of the progress bar track.
+     * @param corner_radius Corner radius (typically 2.0f - 4.5f).
+     * @param track_color Background color of the unfilled track.
+     * @param fill_color Progress fill color (e.g. Windows 10 green #06B025 or blue #0067C0).
+     * @param border_color Subtle boundary stroke color.
+     * @param border_width Border thickness (default: 1.0f).
+     * @param fill_fraction Progress percentage [0.0f, 1.0f] for Determinate mode.
+     * @param anim_phase Continuous animation phase for shimmer sweeps and marquee chunk travel.
+     * @param is_indeterminate true for continuous traveling chunk, false for 0-100% determinate.
+     */
+    void draw_progress_bar(
+        const Rect& rect,
+        float corner_radius,
+        const Color& track_color,
+        const Color& fill_color,
+        const Color& border_color,
+        float border_width,
+        float fill_fraction,
+        float anim_phase,
+        bool is_indeterminate
+    );
+
+    /**
      * @brief Access the embedded Font instance for measurement and metrics.
      */
     Font& font() { return m_font; }
@@ -206,6 +231,7 @@ private:
 
     void init_rect_pipeline();
     void init_text_pipeline();
+    void init_progress_pipeline();
     void flush_text_batch();
 
     int m_viewport_width{0};
@@ -216,6 +242,19 @@ private:
     // Shader Programs
     uint32_t m_rect_program{0};
     uint32_t m_text_program{0};
+    uint32_t m_progress_program{0};
+
+    // Uniform locations for Progress Bar Shader
+    int32_t m_u_pb_proj{-1};
+    int32_t m_u_pb_box{-1};
+    int32_t m_u_pb_radius{-1};
+    int32_t m_u_pb_track_color{-1};
+    int32_t m_u_pb_fill_color{-1};
+    int32_t m_u_pb_border_color{-1};
+    int32_t m_u_pb_border_width{-1};
+    int32_t m_u_pb_fill_fraction{-1};
+    int32_t m_u_pb_anim_phase{-1};
+    int32_t m_u_pb_is_indeterminate{-1};
 
     // Uniform locations for Rounded Rect Shader
     int32_t m_u_rect_proj{-1};
