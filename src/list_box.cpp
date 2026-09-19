@@ -212,12 +212,15 @@ void ListBox::clamp_scroll() {
 }
 
 Rect ListBox::scrollbar_track_rect() const {
-    const float track_w = 12.0f;
+    const float track_w = 7.0f;
+    const float margin_top = 6.0f;
+    const float margin_bottom = 6.0f;
+    const float margin_right = 5.0f;
     return Rect(
-        m_bounds.x + m_bounds.width - track_w - 1.0f,
-        m_bounds.y + 1.0f,
+        m_bounds.x + m_bounds.width - track_w - margin_right,
+        m_bounds.y + margin_top,
         track_w,
-        m_bounds.height - 2.0f
+        std::max(0.0f, m_bounds.height - margin_top - margin_bottom)
     );
 }
 
@@ -227,12 +230,12 @@ Rect ListBox::scrollbar_thumb_rect() const {
     if (total_h <= 0.0f) return track;
 
     float ratio = std::min(1.0f, track.height / total_h);
-    float thumb_h = std::max(20.0f, track.height * ratio);
+    float thumb_h = std::max(24.0f, track.height * ratio);
     float scrollable_track = track.height - thumb_h;
     float max_s = max_scroll_offset();
     float thumb_y = track.y + (max_s > 0.0f ? (m_scroll_offset / max_s) * scrollable_track : 0.0f);
 
-    return Rect(track.x + 2.0f, thumb_y, track.width - 4.0f, thumb_h);
+    return Rect(track.x, thumb_y, track.width, thumb_h);
 }
 
 bool ListBox::handle_mouse(const MouseEvent& ev) {
@@ -255,9 +258,10 @@ bool ListBox::handle_mouse(const MouseEvent& ev) {
             return false;
         }
 
-        // Check if clicked inside scrollbar
-        if (needs_scrollbar() && scrollbar_track_rect().contains(ev.position)) {
-            Rect thumb = scrollbar_thumb_rect();
+        // Check if clicked inside scrollbar (using expanded hit-box for easy grabbing)
+        Rect hit_track = scrollbar_track_rect().expanded(3.0f);
+        if (needs_scrollbar() && hit_track.contains(ev.position)) {
+            Rect thumb = scrollbar_thumb_rect().expanded(2.0f);
             if (thumb.contains(ev.position)) {
                 m_dragging_scrollbar = true;
                 m_drag_start_y = ev.position.y;
@@ -425,21 +429,19 @@ void ListBox::render(Renderer2D& renderer) {
         Rect track = scrollbar_track_rect();
         Rect thumb = scrollbar_thumb_rect();
 
-        // Track background
+        // Subtle track background capsule
         renderer.draw_rounded_rect(
             track,
-            2.0f,
-            Color::from_hex(0xF9FAFB),
-            Color::from_hex(0xE5E7EB),
-            0.5f
+            4.0f,
+            Color::from_hex(0xF3F4F6)
         );
 
-        // Thumb bar
+        // Sleek thumb capsule
         Color thumb_col = m_dragging_scrollbar
-            ? Color::from_hex(0x828282)
-            : Color::from_hex(0xC1C1C1);
+            ? Color::from_hex(0x6B7280)
+            : Color::from_hex(0x9CA3AF);
 
-        renderer.draw_rounded_rect(thumb, 2.0f, thumb_col);
+        renderer.draw_rounded_rect(thumb, 4.0f, thumb_col);
     }
 }
 
