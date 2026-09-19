@@ -28,7 +28,7 @@
 
 /**
  * @file button_demo.cpp
- * @brief Interactive showcase demonstrating Arin32's Buttons, Windows 10 Progress Bars,
+ * @brief Interactive showcase demonstrating Arin32's Buttons, Modern Progress Bars,
  *        Editable TextInput (TextBox), Interactive CheckBox, Automatic Layout Containers,
  *        List Boxes, and dedicated Vector Icons & Graphics Showcase.
  */
@@ -157,7 +157,7 @@ int main(int argc, char** argv) {
     dialog_actions->update_layout();
 
     // -------------------------------------------------------------------------
-    // 3. Windows 10 Progress Bars (Determinate & Indeterminate)
+    // 3. Modern Progress Bars (Determinate & Indeterminate)
     // -------------------------------------------------------------------------
     const float pb_x = 40.0f;
     const float pb_w = 440.0f;
@@ -184,19 +184,12 @@ int main(int argc, char** argv) {
         global_status = "Progress: " + std::to_string(static_cast<int>(det_bar->percentage() * 100.0f)) + "%";
     });
 
-    auto green_btn = pb_controls->add_button("Green Style", 90.0f, 28.0f);
+    // Auto-sized buttons with plenty of clearance so Green Style and Blue Style never touch
+    auto green_btn = pb_controls->add_button("Green Style", 100.0f, 28.0f);
     green_btn->set_style(arin::ButtonStyle::secondary());
-    green_btn->on_click([&]() {
-        det_bar->set_style(arin::ProgressBarStyle::green());
-        global_status = "Style: Windows 10 Green (#06B025)";
-    });
 
-    auto blue_btn = pb_controls->add_button("Blue Style", 85.0f, 28.0f);
+    auto blue_btn = pb_controls->add_button("Blue Style", 90.0f, 28.0f);
     blue_btn->set_style(arin::ButtonStyle::secondary());
-    blue_btn->on_click([&]() {
-        det_bar->set_style(arin::ProgressBarStyle::blue());
-        global_status = "Style: Accent Blue (#0067C0)";
-    });
 
     pb_controls->update_layout();
 
@@ -204,6 +197,19 @@ int main(int argc, char** argv) {
     auto indet_bar = app.add_progress_bar(pb_x, 405.0f, pb_w, pb_h);
     indet_bar->set_indeterminate(true);
     indet_bar->set_style(arin::ProgressBarStyle::green());
+
+    // Clicking style switches color of BOTH determinate and indeterminate (Searching updates) bars
+    green_btn->on_click([&, det_bar, indet_bar]() {
+        det_bar->set_style(arin::ProgressBarStyle::green());
+        indet_bar->set_style(arin::ProgressBarStyle::green());
+        global_status = "Style: Classic Green (#06B025)";
+    });
+
+    blue_btn->on_click([&, det_bar, indet_bar]() {
+        det_bar->set_style(arin::ProgressBarStyle::blue());
+        indet_bar->set_style(arin::ProgressBarStyle::blue());
+        global_status = "Style: Accent Blue (#0067C0)";
+    });
 
     auto indet_controls = app.add_hbox(pb_x, 433.0f, 8.0f);
     auto toggle_indet_btn = indet_controls->add_button("Toggle Indeterminate", 155.0f, 28.0f);
@@ -265,7 +271,7 @@ int main(int argc, char** argv) {
     });
 
     // -------------------------------------------------------------------------
-    // 5. CheckBox List - "Windows Features" (from ctrl-list-boxes.html)
+    // 5. CheckBox List - "System Features" (Interactive multi-item options)
     // -------------------------------------------------------------------------
     const float chk_list_x = 544.0f;
     const float chk_list_y = 295.0f;
@@ -273,20 +279,20 @@ int main(int argc, char** argv) {
     const float chk_list_h = 165.0f;
 
     auto features_list = app.add_check_list_box(chk_list_x, chk_list_y + 25.0f, chk_list_w, chk_list_h);
-    features_list->add_item(".NET Framework 3.5.1", true);
-    features_list->add_item("Active Directory Lightweight Directory Services", false);
-    features_list->add_item("Hyper-V Virtualization Platform", true);
-    features_list->add_item("Internet Information Services (IIS)", true);
-    features_list->add_item("Microsoft Message Queue (MSMQ) Server", false);
-    features_list->add_item("Print and Document Services", true);
-    features_list->add_item("Remote Differential Compression", false);
-    features_list->add_item("RIP Listener & Routing Tools", false);
-    features_list->add_item("Services for NFS", false);
-    features_list->add_item("Simple Network Management Protocol (SNMP)", false);
-    features_list->add_item("Telnet Client", true);
-    features_list->add_item("TFTP Client", false);
-    features_list->add_item("Windows PowerShell 2.0 Engine", true);
-    features_list->add_item("Windows Subsystem for Linux (WSL)", true);
+    features_list->add_item("Modern C++ Runtime & Toolchain", true);
+    features_list->add_item("Directory & Authentication Services", false);
+    features_list->add_item("Hardware Virtualization Hypervisor", true);
+    features_list->add_item("HTTP Web Server & Networking Daemon", true);
+    features_list->add_item("IPC Message Queue Service", false);
+    features_list->add_item("Print and Document Spooler", true);
+    features_list->add_item("High-Performance Data Compression", false);
+    features_list->add_item("IP Routing & Packet Filtering Tools", false);
+    features_list->add_item("Network File System (NFS) Client", false);
+    features_list->add_item("SNMP Monitoring Daemon", false);
+    features_list->add_item("SSH & Remote Terminal Client", true);
+    features_list->add_item("TFTP File Transfer Client", false);
+    features_list->add_item("Command Line Shell & Automation Engine", true);
+    features_list->add_item("POSIX Compatibility Subsystem", true);
 
     features_list->on_item_toggled([&](int idx, bool checked) {
         std::string name = features_list->item_text(idx);
@@ -294,42 +300,46 @@ int main(int argc, char** argv) {
     });
 
     // -------------------------------------------------------------------------
-    // 6. Action Buttons Palette (No Icons - Clean Button Styles)
+    // 6. Action Buttons Palette (Clean, No Forced Icons, Symmetrical Padding)
+    //    Card width: 440px. 4 buttons @ 94px + 3 gaps @ 10px = 406px.
+    //    Symmetrical margins: (440 - 406) / 2 = 17px left & right.
     // -------------------------------------------------------------------------
     const float bottom_y = 485.0f;
+    const float palette_x = 40.0f + 17.0f; // 57.0f (exact 17px card padding)
+    const float palette_btn_w = 94.0f;
 
     // Row 1 of Palette: Primary, Secondary, Success, Danger
-    auto palette_row1 = app.add_hbox(40.0f, bottom_y + 28.0f, 10.0f);
+    auto palette_row1 = app.add_hbox(palette_x, bottom_y + 28.0f, 10.0f);
 
-    auto prim_b = palette_row1->add_button("Primary", 100.0f, 32.0f);
+    auto prim_b = palette_row1->add_button("Primary", palette_btn_w, 32.0f);
     prim_b->set_style(arin::ButtonStyle::primary());
     prim_b->on_click([&]() { global_status = "Palette: Primary button clicked"; });
 
-    auto sec_b = palette_row1->add_button("Secondary", 100.0f, 32.0f);
+    auto sec_b = palette_row1->add_button("Secondary", palette_btn_w, 32.0f);
     sec_b->set_style(arin::ButtonStyle::secondary());
     sec_b->on_click([&]() { global_status = "Palette: Secondary button clicked"; });
 
-    auto succ_b = palette_row1->add_button("Success", 100.0f, 32.0f);
+    auto succ_b = palette_row1->add_button("Success", palette_btn_w, 32.0f);
     succ_b->set_style(arin::ButtonStyle::success());
     succ_b->on_click([&]() { global_status = "Palette: Success button clicked"; });
 
-    auto dang_b = palette_row1->add_button("Danger", 95.0f, 32.0f);
+    auto dang_b = palette_row1->add_button("Danger", palette_btn_w, 32.0f);
     dang_b->set_style(arin::ButtonStyle::danger());
     dang_b->on_click([&]() { global_status = "Palette: Danger button clicked"; });
 
     palette_row1->update_layout();
 
     // Row 2 of Palette: Outline, Disabled, Exit Demo
-    auto palette_row2 = app.add_hbox(40.0f, bottom_y + 70.0f, 10.0f);
+    auto palette_row2 = app.add_hbox(palette_x, bottom_y + 70.0f, 10.0f);
 
-    auto outl_b = palette_row2->add_button("Outline", 100.0f, 32.0f);
+    auto outl_b = palette_row2->add_button("Outline", palette_btn_w, 32.0f);
     outl_b->set_style(arin::ButtonStyle::outline(arin::Color::from_hex(0x0067C0)));
     outl_b->on_click([&]() { global_status = "Palette: Outline button clicked"; });
 
-    auto dis_b = palette_row2->add_button("Disabled", 100.0f, 32.0f);
+    auto dis_b = palette_row2->add_button("Disabled", palette_btn_w, 32.0f);
     dis_b->set_style(arin::ButtonStyle::secondary()).set_enabled(false);
 
-    auto exit_b = palette_row2->add_button("Exit Demo", 100.0f, 32.0f);
+    auto exit_b = palette_row2->add_button("Exit Demo", palette_btn_w, 32.0f);
     exit_b->set_style(arin::ButtonStyle::secondary());
     exit_b->on_click([&]() {
         std::cout << "[Arin32 Event] Closing demo.\n";
@@ -500,9 +510,9 @@ int main(int argc, char** argv) {
             0.90f
         );
 
-        // --- Windows Features Section Label ---
+        // --- System Features Section Label ---
         r.draw_text(
-            "Windows Features: (CheckListBox with independent item toggling)",
+            "System Features: (CheckListBox with independent item toggling)",
             arin::Vec2(chk_list_x, chk_list_y + 4.0f),
             arin::Color::from_hex(0x111827),
             0.95f
@@ -519,14 +529,14 @@ int main(int argc, char** argv) {
 
         r.draw_text(
             "Action Buttons Palette (Clean, No Forced Icons):",
-            arin::Vec2(54.0f, bottom_y + 8.0f),
+            arin::Vec2(palette_x, bottom_y + 8.0f),
             arin::Color::from_hex(0x111827),
             0.92f
         );
 
         r.draw_text(
             "Status: Standard button styles for dialogs, forms, and toolbars",
-            arin::Vec2(54.0f, bottom_y + 112.0f),
+            arin::Vec2(palette_x, bottom_y + 112.0f),
             arin::Color::from_hex(0x6B7280),
             0.82f
         );

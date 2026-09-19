@@ -221,6 +221,13 @@ public:
      */
     Button& fit_to_text(const Font& font, float horizontal_padding = 14.0f);
 
+    /**
+     * @brief Ensures button dimensions satisfy content containment if auto-resize is enabled.
+     * @param font Font engine to measure text and glyph advances with.
+     * @return Reference to this for chaining.
+     */
+    Button& ensure_containment(const Font& font);
+
     // --- Event Callbacks ---
 
     /**

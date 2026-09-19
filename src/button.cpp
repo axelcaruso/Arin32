@@ -217,29 +217,39 @@ Button& Button::fit_to_text(const Font& font, float horizontal_padding) {
     return *this;
 }
 
+Button& Button::ensure_containment(const Font& font) {
+    if (!m_auto_resize) return *this;
+
+    Vec2 text_size = font.measure_text(m_text, m_style.text_scale);
+    float icon_w = (m_icon != IconType::None) ? (m_icon_size + (m_text.empty() ? 0.0f : m_icon_spacing)) : 0.0f;
+    float total_content_w = text_size.x + icon_w;
+    float max_content_h = std::max(text_size.y, (m_icon != IconType::None) ? m_icon_size : 0.0f);
+
+    float min_w = total_content_w + m_style.padding.left + m_style.padding.right;
+    float min_h = max_content_h + m_style.padding.top + m_style.padding.bottom;
+    if (m_bounds.width < min_w) {
+        m_bounds.width = min_w;
+    }
+    if (m_bounds.height < min_h) {
+        m_bounds.height = min_h;
+    }
+    return *this;
+}
+
 /**
  * @brief Renders the button with appropriate colors, guaranteed containment, and typography.
  */
 void Button::render(Renderer2D& renderer) {
     // 1. Content-driven Sizing & Overflow Prevention Guarantee
     // Text and icons can NEVER bleed outside the button boundary.
+    ensure_containment(renderer.font());
+
     Vec2 text_size = renderer.font().measure_text(m_text, m_style.text_scale);
     float effective_scale = m_style.text_scale;
     float icon_w = (m_icon != IconType::None) ? (m_icon_size + (m_text.empty() ? 0.0f : m_icon_spacing)) : 0.0f;
     float total_content_w = text_size.x + icon_w;
-    float max_content_h = std::max(text_size.y, (m_icon != IconType::None) ? m_icon_size : 0.0f);
 
-    if (m_auto_resize) {
-        // Automatically expand the button if its label and icon need more room
-        float min_w = total_content_w + m_style.padding.left + m_style.padding.right;
-        float min_h = max_content_h + m_style.padding.top + m_style.padding.bottom;
-        if (m_bounds.width < min_w) {
-            m_bounds.width = min_w;
-        }
-        if (m_bounds.height < min_h) {
-            m_bounds.height = min_h;
-        }
-    } else {
+    if (!m_auto_resize) {
         // If fixed dimensions were explicitly enforced, dynamically scale text down to fit
         float avail_w = m_bounds.width - m_style.padding.left - m_style.padding.right - icon_w;
         if (avail_w > 0.0f && text_size.x > avail_w) {
