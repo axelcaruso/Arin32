@@ -18,12 +18,14 @@ Welcome to the official developer documentation for **Arin32**, a lightweight, h
    - [4.6 `arin::IWidget` (Polymorphic Widget Base)](#46-ariniwidget-polymorphic-widget-base)
    - [4.7 Automatic Layout Containers (`arin::Layout`, `arin::VBox`, `arin::HBox`)](#47-automatic-layout-containers-arinlayout-arinvbox-arinhbox)
    - [4.8 List Box Widgets (`arin::ListBox`, `arin::CheckListBox`, `arin::ListBoxMode`, `arin::ListBoxStyle`)](#48-list-box-widgets-arinlistbox-arinchecklistbox-arinlistboxmode-arinlistboxstyle)
-   - [4.9 `arin::Theme`](#49-arintheme)
-   - [4.10 `arin::Renderer2D`](#410-arinrenderer2d)
-   - [4.11 `arin::Font`](#411-arinfont)
-   - [4.12 `arin::Window` & `arin::IPlatformBackend`](#412-arinwindow--ariniplatformbackend)
-   - [4.13 Geometric & Color Types (`Vec2`, `Rect`, `Color`, `Padding`)](#413-geometric--color-types)
-   - [4.14 Input System (`InputState`, `MouseEvent`, `MouseButton`, `InputAction`)](#414-input-system)
+   - [4.9 Image & Texture Support (`arin::Texture`, `arin::Image`, `arin::TextureFilter`, `arin::ImageScaleMode`)](#49-image--texture-support-arintexture-arinimage-arintexturefilter-arinimagescalemode)
+   - [4.10 Vector Icons (`arin::Icon`, `arin::IconType`)](#410-vector-icons-arinicon-arinicontype)
+   - [4.11 `arin::Theme`](#411-arintheme)
+   - [4.12 `arin::Renderer2D`](#412-arinrenderer2d)
+   - [4.13 `arin::Font`](#413-arinfont)
+   - [4.14 `arin::Window` & `arin::IPlatformBackend`](#414-arinwindow--ariniplatformbackend)
+   - [4.15 Geometric & Color Types (`Vec2`, `Rect`, `Color`, `Padding`)](#415-geometric--color-types)
+   - [4.16 Input System (`InputState`, `MouseEvent`, `MouseButton`, `InputAction`)](#416-input-system)
 5. [Building, Running, and Testing](#5.building-running-and-testing)
    - [Linux Build](#linux-build)
    - [FreeBSD Build](#freebsd-build)
@@ -190,6 +192,12 @@ The central coordinator managing window lifecycle, OpenGL context initialization
   Creates and registers a horizontal automatic layout container (stacks child widgets left-to-right).
 - `std::shared_ptr<Layout> add_layout(std::shared_ptr<Layout> layout)`:
   Registers a pre-allocated layout container.
+- `std::shared_ptr<Image> add_image(std::shared_ptr<Texture> texture, float x, float y, float width, float height, ImageScaleMode scale_mode = ImageScaleMode::Fit)`:
+  Creates, registers, and returns an Image widget bound to an existing texture.
+- `std::shared_ptr<Image> add_image(const std::string& filepath, float x, float y, float width, float height, ImageScaleMode scale_mode = ImageScaleMode::Fit)`:
+  Creates, registers, and returns an Image widget loaded directly from an image file (PNG, JPG, BMP, TGA).
+- `std::shared_ptr<Icon> add_icon(IconType icon, float x, float y, float size = 16.0f, const Color& color = Color(240, 240, 240))`:
+  Creates, registers, and returns a crisp vector system icon widget.
 - `void on_frame(FrameCallback cb)`:
   Registers a user rendering callback executed every frame before buttons are drawn (ideal for titles, backgrounds, panels).
 - `void on_after_frame(FrameCallback cb)`:
@@ -239,8 +247,9 @@ enum class ButtonState : uint8_t {
 - `Button& set_style(const ButtonStyle& style)`: Applies visual style.
 - `Button& set_enabled(bool enabled)`: Enables or disables user interaction.
 - `Button& set_corner_radius(float radius)`: Sets corner radius in pixels (default: 4.5px).
-- `Button& set_auto_resize(bool enable)`: Enables/disables automatic expansion to fit text content (default: true).
-- `Button& fit_to_text(const Font& font, float horizontal_padding = 14.0f)`: Explicitly resizes the button to fit its text with padding.
+- `Button& set_icon(IconType icon, float size = 16.0f, float spacing = 6.0f)`: Attaches a crisp vector icon preceding the button label.
+- `Button& set_auto_resize(bool enable)`: Enables/disables automatic expansion to fit text and icon content (default: true).
+- `Button& fit_to_text(const Font& font, float horizontal_padding = 14.0f)`: Explicitly resizes the button to fit its text and icon with padding.
 
 #### Callbacks
 - `Button& on_click(ClickCallback callback)`: Registers `void()` callback fired on complete click.
@@ -493,7 +502,80 @@ Full visual customization of card borders, row highlights, text colors, checkbox
 
 ---
 
-### 4.9 `arin::Theme`
+### 4.9 Image & Texture Support (`arin::Texture`, `arin::Image`, `arin::TextureFilter`, `arin::ImageScaleMode`)
+
+Arin32 includes a built-in, OS-agnostic texture loading engine and GPU image pipeline. Using the embedded `stb_image` decoder, images in standard formats (PNG, JPEG, BMP, TGA) are loaded directly into OpenGL 2D textures without dynamic library dependencies.
+
+```cpp
+#include <arin/texture.hpp>
+#include <arin/image.hpp>
+```
+
+#### Texture Class (`arin::Texture`)
+- `create_from_file(const std::string& path, TextureFilter filter = TextureFilter::Linear)`:
+  Loads and uploads an image from the filesystem.
+- `create_from_memory(const uint8_t* data, size_t size, TextureFilter filter = TextureFilter::Linear)`:
+  Decodes and uploads an image from an in-memory byte buffer (useful for embedded assets or virtual filesystems).
+- `create_from_rgba(int width, int height, const uint8_t* rgba, TextureFilter filter = TextureFilter::Linear)`:
+  Creates an OpenGL texture from uncompressed 32-bit RGBA pixel buffers.
+- `create_empty(int width, int height, TextureFilter filter = TextureFilter::Linear)`:
+  Allocates uninitialized GPU texture storage.
+- `update_sub_rect(int x, int y, int w, int h, const uint8_t* rgba)`:
+  Uploads modified pixels to a specific rectangular sub-region.
+- `bool is_valid() const`: Checks if GPU texture handle is valid.
+- `int width() const`, `int height() const`, `float aspect_ratio() const`: Image geometry.
+
+#### Texture Filtering (`TextureFilter`)
+- `TextureFilter::Linear`: Bilinear interpolation for smooth scaling (photos, icons, UI graphics).
+- `TextureFilter::Nearest`: Point sampling for pixel art and pixel-exact graphics.
+
+#### Image Widget (`arin::Image`)
+Conforms to the `IWidget` interface, allowing direct integration into layouts (`VBox`, `HBox`) or absolute positioning:
+- `set_texture(std::shared_ptr<Texture> texture)`: Binds texture to widget.
+- `load_from_file(const std::string& filepath)`: Loads and sets an image file directly.
+- `set_scale_mode(ImageScaleMode mode)`: Configures aspect-ratio scaling behavior:
+  - `ImageScaleMode::Fit`: Scales uniformly to fit entirely within bounds (letterbox/pillarbox).
+  - `ImageScaleMode::Stretch`: Stretches non-uniformly to exactly fill container bounds.
+  - `ImageScaleMode::Fill`: Scales uniformly to completely cover bounds, clipping any excess.
+  - `ImageScaleMode::Center`: Keeps native pixel dimensions centered in bounds.
+- `set_corner_radius(float radius)`: GPU Signed Distance Field (SDF) rounded corners, rendering razor-sharp curved image borders with zero clipping masks.
+- `set_tint(const Color& tint)`: Modulates image color and alpha transparency.
+
+---
+
+### 4.10 Vector Icons (`arin::Icon`, `arin::IconType`)
+
+Arin32 features a mathematically defined vector icon system. Icons are rendered via hardware-accelerated Signed Distance Fields and thick anti-aliased geometric primitives. They scale losslessly to any resolution or DPI and adapt instantly to any color tint.
+
+```cpp
+#include <arin/icon.hpp>
+```
+
+#### Supported Icon Glyphs (`arin::IconType`)
+- `IconType::Folder`: Desktop file folder glyph.
+- `IconType::File`: Document sheet with content lines.
+- `IconType::Check`: Crisp confirmation checkmark.
+- `IconType::Close`: Dismiss / cancel cross (X).
+- `IconType::Search`: Magnifying glass with lens and diagonal handle.
+- `IconType::Settings`: Gear cog wheel with radiating teeth.
+- `IconType::Cut`: Scissors icon.
+- `IconType::Copy`: Overlapping document sheets.
+- `IconType::Paste`: Clipboard with document sheet.
+- `IconType::Trash`: Wastebasket delete icon.
+- `IconType::Edit`: Pencil icon.
+- `IconType::More`: Horizontal ellipsis (...).
+- `IconType::ChevronRight`, `ChevronDown`, `ChevronUp`, `ChevronLeft`: Directional sub-menu chevrons.
+- `IconType::ArrowRight`, `ArrowLeft`: Navigational arrows with stems.
+- `IconType::Info`, `Warning`, `Error`: Status badge glyphs.
+
+#### Icon Widget (`arin::Icon`)
+- `set_type(IconType type)`: Sets the vector icon to display.
+- `set_color(const Color& color)`: Changes stroke and fill color.
+- `set_size(float width, float height)` / `set_position(float x, float y)`: Configures geometry.
+
+---
+
+### 4.11 `arin::Theme`
 
 Global theme definition holding window background clear colors and default button styles.
 
@@ -503,13 +585,14 @@ Global theme definition holding window background clear colors and default butto
 
 ---
 
-### 4.10 `arin::Renderer2D`
+### 4.12 `arin::Renderer2D`
 
 Hardware-accelerated 2D rendering engine powered by OpenGL 3.3 Core profile shaders. Internally organized into modular, decoupled sub-pipelines located under `src/renderer/`:
 - **`shader_util`**: Centralized shader compilation, program linking, and 2D orthographic projection matrix calculation.
-- **`rect_pipeline`**: Signed Distance Field (SDF) evaluation for anti-aliased rectangles, rounded corners, soft drop shadows, and checkmarks.
+- **`rect_pipeline`**: Signed Distance Field (SDF) evaluation for anti-aliased rectangles, rounded corners, soft drop shadows, vector icons, and checkmarks.
 - **`text_pipeline`**: Dynamic vertex streaming and batching for proportional typography with embedded Open Sans font atlas.
 - **`progress_pipeline`**: Windows 10 modern progress bars with animated cosine shimmer sweeps and traveling marquee chunks.
+- **`image_pipeline`**: Textured 2D quads with fragment-shader SDF rounded corners, UV mapping, and color modulation.
 - **`renderer`**: High-level orchestrator managing viewport state, frame lifecycles (`begin_frame`, `end_frame`, `flush`), and drawing delegation.
 
 ```cpp
@@ -517,7 +600,7 @@ Hardware-accelerated 2D rendering engine powered by OpenGL 3.3 Core profile shad
 ```
 
 #### Core Methods
-- `bool init()`: Compiles GLSL shaders, initializes VAOs/VBOs, and uploads font atlas.
+- `bool init()`: Compiles GLSL shaders, initializes VAOs/VBOs across all pipelines, and uploads font atlas.
 - `void shutdown()`: Frees OpenGL resources.
 - `void begin_frame(int viewport_width, int viewport_height)`: Sets orthographic projection matrix and blending modes.
 - `void end_frame()`: Flushes all batched geometry.
@@ -528,6 +611,10 @@ Hardware-accelerated 2D rendering engine powered by OpenGL 3.3 Core profile shad
   Draws anti-aliased rounded rectangle via fragment shader Signed Distance Field.
 - `void draw_shadow(const Rect& rect, float corner_radius, const Color& shadow_color, const Vec2& offset, float blur)`:
   Draws soft Gaussian drop shadow.
+- `void draw_image(const Texture& texture, const Rect& dest, const Color& tint = Color::white(), float corner_radius = 0.0f)`:
+  Renders a 2D texture with optional SDF anti-aliased rounded corners and color tinting.
+- `void draw_icon(IconType icon, const Rect& bounds, const Color& color)`:
+  Renders a crisp vector system icon at specified bounding box.
 - `void draw_checkmark(const Rect& box, const Color& color, float thickness = 2.0f)`:
   Draws crisp anti-aliased checkmark inside a checkbox boundary.
 - `void draw_progress_bar(const Rect& rect, float corner_radius, const Color& track_color, const Color& fill_color, const Color& border_color, float border_width, float fill_fraction, float anim_phase, bool is_indeterminate)`:
@@ -542,7 +629,7 @@ Hardware-accelerated 2D rendering engine powered by OpenGL 3.3 Core profile shad
 
 ---
 
-### 4.11 `arin::Font`
+### 4.13 `arin::Font`
 
 Zero-dependency embedded typography engine powered by **Open Sans**.
 
@@ -564,7 +651,7 @@ Zero-dependency embedded typography engine powered by **Open Sans**.
 
 ---
 
-### 4.12 `arin::Window` & `arin::IPlatformBackend`
+### 4.14 `arin::Window` & `arin::IPlatformBackend`
 
 OS abstraction isolating window creation, swap buffers, and event polling.
 
@@ -574,7 +661,7 @@ OS abstraction isolating window creation, swap buffers, and event polling.
 
 ---
 
-### 4.13 Geometric & Color Types
+### 4.15 Geometric & Color Types
 
 ```cpp
 #include <arin/types.hpp>
@@ -607,7 +694,7 @@ OS abstraction isolating window creation, swap buffers, and event polling.
 
 ---
 
-### 4.14 Input System
+### 4.16 Input System
 
 ```cpp
 #include <arin/input.hpp>

@@ -30,6 +30,7 @@
 #include "shader_util.hpp"
 #include <GL/glew.h>
 #include <algorithm>
+#include <vector>
 
 namespace arin {
 namespace renderer {
@@ -323,6 +324,357 @@ void RectPipeline::draw_checkmark(
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
     glUseProgram(0);
+}
+
+void RectPipeline::draw_icon(
+    int viewport_width,
+    int viewport_height,
+    IconType icon,
+    const Rect& bounds,
+    const Color& color
+) {
+    if (bounds.width <= 0.0f || bounds.height <= 0.0f || color.a <= 0.0f || icon == IconType::None) {
+        return;
+    }
+
+    float bx = bounds.x;
+    float by = bounds.y;
+    float bw = bounds.width;
+    float bh = bounds.height;
+    float th = std::max(1.5f, bw * 0.10f); // Default stroke thickness scaled to icon dimensions
+
+    // Lambda to emit thick 2D line segments
+    auto build_segment = [](Vec2 a, Vec2 b, float thickness, std::vector<float>& out) {
+        Vec2 d(b.x - a.x, b.y - a.y);
+        float len = std::sqrt(d.x * d.x + d.y * d.y);
+        if (len < 1e-4f) return;
+        Vec2 n(-d.y / len * (thickness * 0.5f), d.x / len * (thickness * 0.5f));
+
+        out.push_back(a.x - n.x); out.push_back(a.y - n.y);
+        out.push_back(a.x + n.x); out.push_back(a.y + n.y);
+        out.push_back(b.x + n.x); out.push_back(b.y + n.y);
+
+        out.push_back(a.x - n.x); out.push_back(a.y - n.y);
+        out.push_back(b.x + n.x); out.push_back(b.y + n.y);
+        out.push_back(b.x - n.x); out.push_back(b.y - n.y);
+    };
+
+    std::vector<float> line_verts;
+
+    switch (icon) {
+        case IconType::Check: {
+            draw_checkmark(viewport_width, viewport_height, bounds, color, th);
+            return;
+        }
+
+        case IconType::Close: {
+            Vec2 p0(bx + bw * 0.25f, by + bh * 0.25f);
+            Vec2 p1(bx + bw * 0.75f, by + bh * 0.75f);
+            Vec2 p2(bx + bw * 0.75f, by + bh * 0.25f);
+            Vec2 p3(bx + bw * 0.25f, by + bh * 0.75f);
+            build_segment(p0, p1, th, line_verts);
+            build_segment(p2, p3, th, line_verts);
+            break;
+        }
+
+        case IconType::ChevronRight: {
+            Vec2 p0(bx + bw * 0.35f, by + bh * 0.25f);
+            Vec2 p1(bx + bw * 0.65f, by + bh * 0.50f);
+            Vec2 p2(bx + bw * 0.35f, by + bh * 0.75f);
+            build_segment(p0, p1, th, line_verts);
+            build_segment(p1, p2, th, line_verts);
+            break;
+        }
+
+        case IconType::ChevronDown: {
+            Vec2 p0(bx + bw * 0.25f, by + bh * 0.35f);
+            Vec2 p1(bx + bw * 0.50f, by + bh * 0.65f);
+            Vec2 p2(bx + bw * 0.75f, by + bh * 0.35f);
+            build_segment(p0, p1, th, line_verts);
+            build_segment(p1, p2, th, line_verts);
+            break;
+        }
+
+        case IconType::ChevronUp: {
+            Vec2 p0(bx + bw * 0.25f, by + bh * 0.65f);
+            Vec2 p1(bx + bw * 0.50f, by + bh * 0.35f);
+            Vec2 p2(bx + bw * 0.75f, by + bh * 0.65f);
+            build_segment(p0, p1, th, line_verts);
+            build_segment(p1, p2, th, line_verts);
+            break;
+        }
+
+        case IconType::ChevronLeft: {
+            Vec2 p0(bx + bw * 0.65f, by + bh * 0.25f);
+            Vec2 p1(bx + bw * 0.35f, by + bh * 0.50f);
+            Vec2 p2(bx + bw * 0.65f, by + bh * 0.75f);
+            build_segment(p0, p1, th, line_verts);
+            build_segment(p1, p2, th, line_verts);
+            break;
+        }
+
+        case IconType::ArrowRight: {
+            Vec2 p0(bx + bw * 0.18f, by + bh * 0.50f);
+            Vec2 p1(bx + bw * 0.76f, by + bh * 0.50f);
+            Vec2 p2(bx + bw * 0.52f, by + bh * 0.26f);
+            Vec2 p3(bx + bw * 0.52f, by + bh * 0.74f);
+            build_segment(p0, p1, th, line_verts);
+            build_segment(p2, p1, th, line_verts);
+            build_segment(p3, p1, th, line_verts);
+            break;
+        }
+
+        case IconType::ArrowLeft: {
+            Vec2 p0(bx + bw * 0.82f, by + bh * 0.50f);
+            Vec2 p1(bx + bw * 0.24f, by + bh * 0.50f);
+            Vec2 p2(bx + bw * 0.48f, by + bh * 0.26f);
+            Vec2 p3(bx + bw * 0.48f, by + bh * 0.74f);
+            build_segment(p0, p1, th, line_verts);
+            build_segment(p2, p1, th, line_verts);
+            build_segment(p3, p1, th, line_verts);
+            break;
+        }
+
+        case IconType::Folder: {
+            // Folder top tab
+            draw_rounded_rect(viewport_width, viewport_height,
+                Rect(bx + bw * 0.12f, by + bh * 0.18f, bw * 0.36f, bh * 0.22f),
+                2.0f, color, Color::transparent(), 0.0f);
+            // Folder front body
+            draw_rounded_rect(viewport_width, viewport_height,
+                Rect(bx + bw * 0.12f, by + bh * 0.32f, bw * 0.76f, bh * 0.52f),
+                2.0f, color, Color::transparent(), 0.0f);
+            return;
+        }
+
+        case IconType::File: {
+            // Document sheet
+            draw_rounded_rect(viewport_width, viewport_height,
+                Rect(bx + bw * 0.22f, by + bh * 0.14f, bw * 0.56f, bh * 0.72f),
+                2.0f, Color::transparent(), color, th);
+            // Document text lines inside
+            build_segment(Vec2(bx + bw * 0.34f, by + bh * 0.40f), Vec2(bx + bw * 0.66f, by + bh * 0.40f), th * 0.8f, line_verts);
+            build_segment(Vec2(bx + bw * 0.34f, by + bh * 0.55f), Vec2(bx + bw * 0.66f, by + bh * 0.55f), th * 0.8f, line_verts);
+            build_segment(Vec2(bx + bw * 0.34f, by + bh * 0.70f), Vec2(bx + bw * 0.52f, by + bh * 0.70f), th * 0.8f, line_verts);
+            break;
+        }
+
+        case IconType::Search: {
+            // Magnifier lens ring
+            float r = bw * 0.24f;
+            draw_rounded_rect(viewport_width, viewport_height,
+                Rect(bx + bw * 0.16f, by + bh * 0.16f, r * 2.0f, r * 2.0f),
+                r, Color::transparent(), color, th);
+            // Diagonal handle
+            Vec2 p0(bx + bw * 0.52f, by + bh * 0.52f);
+            Vec2 p1(bx + bw * 0.82f, by + bh * 0.82f);
+            build_segment(p0, p1, th * 1.3f, line_verts);
+            break;
+        }
+
+        case IconType::Settings: {
+            // Central cog ring
+            float r = bw * 0.24f;
+            draw_rounded_rect(viewport_width, viewport_height,
+                Rect(bx + bw * 0.5f - r, by + bh * 0.5f - r, r * 2.0f, r * 2.0f),
+                r, Color::transparent(), color, th);
+            // Radiating cog teeth notches
+            build_segment(Vec2(bx + bw * 0.5f, by + bh * 0.12f), Vec2(bx + bw * 0.5f, by + bh * 0.28f), th * 1.2f, line_verts);
+            build_segment(Vec2(bx + bw * 0.5f, by + bh * 0.72f), Vec2(bx + bw * 0.5f, by + bh * 0.88f), th * 1.2f, line_verts);
+            build_segment(Vec2(bx + bw * 0.12f, by + bh * 0.5f), Vec2(bx + bw * 0.28f, by + bh * 0.5f), th * 1.2f, line_verts);
+            build_segment(Vec2(bx + bw * 0.72f, by + bh * 0.5f), Vec2(bx + bw * 0.88f, by + bh * 0.5f), th * 1.2f, line_verts);
+            break;
+        }
+
+        case IconType::Cut: {
+            // Scissors blades
+            Vec2 p0(bx + bw * 0.32f, by + bh * 0.32f);
+            Vec2 p1(bx + bw * 0.82f, by + bh * 0.78f);
+            Vec2 p2(bx + bw * 0.32f, by + bh * 0.68f);
+            Vec2 p3(bx + bw * 0.82f, by + bh * 0.22f);
+            build_segment(p0, p1, th, line_verts);
+            build_segment(p2, p3, th, line_verts);
+            // Finger loops
+            float lr = bw * 0.12f;
+            draw_rounded_rect(viewport_width, viewport_height,
+                Rect(bx + bw * 0.14f, by + bh * 0.24f, lr * 2.0f, lr * 2.0f),
+                lr, Color::transparent(), color, th * 0.8f);
+            draw_rounded_rect(viewport_width, viewport_height,
+                Rect(bx + bw * 0.14f, by + bh * 0.56f, lr * 2.0f, lr * 2.0f),
+                lr, Color::transparent(), color, th * 0.8f);
+            break;
+        }
+
+        case IconType::Copy: {
+            // Back sheet outline
+            draw_rounded_rect(viewport_width, viewport_height,
+                Rect(bx + bw * 0.16f, by + bh * 0.14f, bw * 0.48f, bh * 0.58f),
+                1.5f, Color::transparent(), color, th * 0.9f);
+            // Front sheet filled with background tint and outline
+            Color front_fill(color.r, color.g, color.b, color.a * 0.25f);
+            draw_rounded_rect(viewport_width, viewport_height,
+                Rect(bx + bw * 0.34f, by + bh * 0.28f, bw * 0.48f, bh * 0.58f),
+                1.5f, front_fill, color, th * 0.9f);
+            return;
+        }
+
+        case IconType::Paste: {
+            // Clipboard backing board
+            draw_rounded_rect(viewport_width, viewport_height,
+                Rect(bx + bw * 0.20f, by + bh * 0.20f, bw * 0.60f, bh * 0.68f),
+                2.0f, Color::transparent(), color, th);
+            // Top clip
+            draw_rounded_rect(viewport_width, viewport_height,
+                Rect(bx + bw * 0.36f, by + bh * 0.12f, bw * 0.28f, bh * 0.14f),
+                1.5f, color, Color::transparent(), 0.0f);
+            // Content lines
+            build_segment(Vec2(bx + bw * 0.32f, by + bh * 0.44f), Vec2(bx + bw * 0.68f, by + bh * 0.44f), th * 0.8f, line_verts);
+            build_segment(Vec2(bx + bw * 0.32f, by + bh * 0.58f), Vec2(bx + bw * 0.68f, by + bh * 0.58f), th * 0.8f, line_verts);
+            build_segment(Vec2(bx + bw * 0.32f, by + bh * 0.72f), Vec2(bx + bw * 0.54f, by + bh * 0.72f), th * 0.8f, line_verts);
+            break;
+        }
+
+        case IconType::Trash: {
+            // Wastebasket can
+            draw_rounded_rect(viewport_width, viewport_height,
+                Rect(bx + bw * 0.26f, by + bh * 0.34f, bw * 0.48f, bh * 0.52f),
+                1.5f, Color::transparent(), color, th);
+            // Lid bar
+            build_segment(Vec2(bx + bw * 0.18f, by + bh * 0.32f), Vec2(bx + bw * 0.82f, by + bh * 0.32f), th * 1.1f, line_verts);
+            // Lid handle
+            build_segment(Vec2(bx + bw * 0.40f, by + bh * 0.22f), Vec2(bx + bw * 0.60f, by + bh * 0.22f), th * 0.9f, line_verts);
+            // Vertical ribs
+            build_segment(Vec2(bx + bw * 0.42f, by + bh * 0.44f), Vec2(bx + bw * 0.42f, by + bh * 0.74f), th * 0.8f, line_verts);
+            build_segment(Vec2(bx + bw * 0.58f, by + bh * 0.44f), Vec2(bx + bw * 0.58f, by + bh * 0.74f), th * 0.8f, line_verts);
+            break;
+        }
+
+        case IconType::Edit: {
+            // Diagonal pencil stem
+            Vec2 p0(bx + bw * 0.32f, by + bh * 0.68f);
+            Vec2 p1(bx + bw * 0.74f, by + bh * 0.26f);
+            build_segment(p0, p1, th * 1.3f, line_verts);
+            // Pencil tip
+            build_segment(Vec2(bx + bw * 0.22f, by + bh * 0.78f), Vec2(bx + bw * 0.32f, by + bh * 0.68f), th, line_verts);
+            break;
+        }
+
+        case IconType::More: {
+            // Horizontal ellipsis dots (...)
+            float dot_size = std::max(2.5f, bw * 0.14f);
+            float r = dot_size * 0.5f;
+            draw_rounded_rect(viewport_width, viewport_height,
+                Rect(bx + bw * 0.22f - r, by + bh * 0.5f - r, dot_size, dot_size),
+                r, color, Color::transparent(), 0.0f);
+            draw_rounded_rect(viewport_width, viewport_height,
+                Rect(bx + bw * 0.50f - r, by + bh * 0.5f - r, dot_size, dot_size),
+                r, color, Color::transparent(), 0.0f);
+            draw_rounded_rect(viewport_width, viewport_height,
+                Rect(bx + bw * 0.78f - r, by + bh * 0.5f - r, dot_size, dot_size),
+                r, color, Color::transparent(), 0.0f);
+            return;
+        }
+
+        case IconType::Info: {
+            // Circular boundary
+            float r = bw * 0.38f;
+            draw_rounded_rect(viewport_width, viewport_height,
+                Rect(bx + bw * 0.5f - r, by + bh * 0.5f - r, r * 2.0f, r * 2.0f),
+                r, Color::transparent(), color, th);
+            // 'i' dot
+            float dot_size = std::max(2.0f, th * 1.1f);
+            draw_rounded_rect(viewport_width, viewport_height,
+                Rect(bx + bw * 0.5f - dot_size * 0.5f, by + bh * 0.30f, dot_size, dot_size),
+                dot_size * 0.5f, color, Color::transparent(), 0.0f);
+            // 'i' stem
+            build_segment(Vec2(bx + bw * 0.5f, by + bh * 0.44f), Vec2(bx + bw * 0.5f, by + bh * 0.72f), th, line_verts);
+            break;
+        }
+
+        case IconType::Warning: {
+            // Cautionary triangle
+            Vec2 p0(bx + bw * 0.50f, by + bh * 0.16f);
+            Vec2 p1(bx + bw * 0.16f, by + bh * 0.82f);
+            Vec2 p2(bx + bw * 0.84f, by + bh * 0.82f);
+            build_segment(p0, p1, th, line_verts);
+            build_segment(p1, p2, th, line_verts);
+            build_segment(p2, p0, th, line_verts);
+            // Exclamation stem
+            build_segment(Vec2(bx + bw * 0.5f, by + bh * 0.40f), Vec2(bx + bw * 0.5f, by + bh * 0.62f), th * 0.9f, line_verts);
+            // Exclamation dot
+            float dot_size = std::max(2.0f, th * 0.9f);
+            draw_rounded_rect(viewport_width, viewport_height,
+                Rect(bx + bw * 0.5f - dot_size * 0.5f, by + bh * 0.70f, dot_size, dot_size),
+                dot_size * 0.5f, color, Color::transparent(), 0.0f);
+            break;
+        }
+
+        case IconType::Error: {
+            // Circular badge with white/color cross
+            float r = bw * 0.38f;
+            draw_rounded_rect(viewport_width, viewport_height,
+                Rect(bx + bw * 0.5f - r, by + bh * 0.5f - r, r * 2.0f, r * 2.0f),
+                r, color, Color::transparent(), 0.0f);
+            // Internal sharp white X
+            Vec2 p0(bx + bw * 0.34f, by + bh * 0.34f);
+            Vec2 p1(bx + bw * 0.66f, by + bh * 0.66f);
+            Vec2 p2(bx + bw * 0.66f, by + bh * 0.34f);
+            Vec2 p3(bx + bw * 0.34f, by + bh * 0.66f);
+            std::vector<float> cross_verts;
+            build_segment(p0, p1, th * 0.9f, cross_verts);
+            build_segment(p2, p3, th * 0.9f, cross_verts);
+
+            // Render inner cross with white color
+            glUseProgram(m_program);
+            float ortho[16];
+            make_ortho_projection(viewport_width, viewport_height, ortho);
+            glUniformMatrix4fv(m_u_proj, 1, GL_FALSE, ortho);
+            glUniform4f(m_u_box, bx - 10.0f, by - 10.0f, bw + 20.0f, bh + 20.0f);
+            glUniform1f(m_u_radius, 0.0f);
+            glUniform4f(m_u_fill, 1.0f, 1.0f, 1.0f, 1.0f);
+            glUniform4f(m_u_border_color, 0.0f, 0.0f, 0.0f, 0.0f);
+            glUniform1f(m_u_border_width, 0.0f);
+            glUniform1i(m_u_is_shadow, 0);
+
+            glBindVertexArray(m_vao);
+            glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+            glBufferData(GL_ARRAY_BUFFER, cross_verts.size() * sizeof(float), cross_verts.data(), GL_DYNAMIC_DRAW);
+            glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(cross_verts.size() / 2));
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+            glBindVertexArray(0);
+            glUseProgram(0);
+            return;
+        }
+
+        default:
+            break;
+    }
+
+    // Render queued vector segments
+    if (!line_verts.empty()) {
+        glUseProgram(m_program);
+
+        float ortho[16];
+        make_ortho_projection(viewport_width, viewport_height, ortho);
+        glUniformMatrix4fv(m_u_proj, 1, GL_FALSE, ortho);
+
+        glUniform4f(m_u_box, bx - 10.0f, by - 10.0f, bw + 20.0f, bh + 20.0f);
+        glUniform1f(m_u_radius, 0.0f);
+        glUniform4f(m_u_fill, color.r, color.g, color.b, color.a);
+        glUniform4f(m_u_border_color, 0.0f, 0.0f, 0.0f, 0.0f);
+        glUniform1f(m_u_border_width, 0.0f);
+        glUniform1i(m_u_is_shadow, 0);
+
+        glBindVertexArray(m_vao);
+        glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+
+        glBufferData(GL_ARRAY_BUFFER, line_verts.size() * sizeof(float), line_verts.data(), GL_DYNAMIC_DRAW);
+        glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(line_verts.size() / 2));
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+        glUseProgram(0);
+    }
 }
 
 } // namespace renderer

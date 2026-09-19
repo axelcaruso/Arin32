@@ -99,6 +99,7 @@ int main(int argc, char** argv) {
     auto dialog_actions = app.add_hbox(dialog_actions_x, footer_y + 16.0f, 10.0f);
 
     auto save_btn = dialog_actions->add_button("Save", 85.0f, 32.0f);
+    save_btn->set_icon(arin::IconType::Check, 13.0f, 6.0f);
     save_btn->set_style(arin::ButtonStyle::primary());
     save_btn->on_click([&]() {
         action_counter++;
@@ -115,6 +116,7 @@ int main(int argc, char** argv) {
     });
 
     auto cancel_btn = dialog_actions->add_button("Cancel", 85.0f, 32.0f);
+    cancel_btn->set_icon(arin::IconType::Close, 11.0f, 6.0f);
     cancel_btn->set_style(arin::ButtonStyle::secondary());
     cancel_btn->on_click([&]() {
         action_counter++;
@@ -270,30 +272,37 @@ int main(int argc, char** argv) {
 
     auto palette_row = app.add_hbox(40.0f, bottom_y + 26.0f, 10.0f);
 
-    auto prim_b = palette_row->add_button("Primary", 100.0f, 32.0f);
+    auto prim_b = palette_row->add_button("Files", 100.0f, 32.0f);
+    prim_b->set_icon(arin::IconType::Folder, 14.0f, 6.0f);
     prim_b->set_style(arin::ButtonStyle::primary());
-    prim_b->on_click([&]() { global_status = "Palette: Primary button clicked"; });
+    prim_b->on_click([&]() { global_status = "Palette: Files button clicked"; });
 
-    auto sec_b = palette_row->add_button("Secondary", 100.0f, 32.0f);
+    auto sec_b = palette_row->add_button("Settings", 100.0f, 32.0f);
+    sec_b->set_icon(arin::IconType::Settings, 14.0f, 6.0f);
     sec_b->set_style(arin::ButtonStyle::secondary());
-    sec_b->on_click([&]() { global_status = "Palette: Secondary button clicked"; });
+    sec_b->on_click([&]() { global_status = "Palette: Settings button clicked"; });
 
-    auto succ_b = palette_row->add_button("Success", 100.0f, 32.0f);
+    auto succ_b = palette_row->add_button("Confirm", 100.0f, 32.0f);
+    succ_b->set_icon(arin::IconType::Check, 14.0f, 6.0f);
     succ_b->set_style(arin::ButtonStyle::success());
-    succ_b->on_click([&]() { global_status = "Palette: Success button clicked"; });
+    succ_b->on_click([&]() { global_status = "Palette: Confirm button clicked"; });
 
-    auto dang_b = palette_row->add_button("Danger", 100.0f, 32.0f);
+    auto dang_b = palette_row->add_button("Delete", 100.0f, 32.0f);
+    dang_b->set_icon(arin::IconType::Trash, 14.0f, 6.0f);
     dang_b->set_style(arin::ButtonStyle::danger());
-    dang_b->on_click([&]() { global_status = "Palette: Danger button clicked"; });
+    dang_b->on_click([&]() { global_status = "Palette: Delete button clicked"; });
 
-    auto outl_b = palette_row->add_button("Outline", 100.0f, 32.0f);
+    auto outl_b = palette_row->add_button("Search", 100.0f, 32.0f);
+    outl_b->set_icon(arin::IconType::Search, 14.0f, 6.0f);
     outl_b->set_style(arin::ButtonStyle::outline(arin::Color::from_hex(0x0067C0)));
-    outl_b->on_click([&]() { global_status = "Palette: Outline button clicked"; });
+    outl_b->on_click([&]() { global_status = "Palette: Search button clicked"; });
 
     auto dis_b = palette_row->add_button("Disabled", 100.0f, 32.0f);
+    dis_b->set_icon(arin::IconType::Edit, 14.0f, 6.0f);
     dis_b->set_style(arin::ButtonStyle::secondary()).set_enabled(false);
 
-    auto exit_b = palette_row->add_button("Exit Demo", 100.0f, 32.0f);
+    auto exit_b = palette_row->add_button("Exit", 90.0f, 32.0f);
+    exit_b->set_icon(arin::IconType::Close, 12.0f, 6.0f);
     exit_b->set_style(arin::ButtonStyle::secondary());
     exit_b->on_click([&]() {
         std::cout << "[Arin32 Event] Closing demo.\n";
@@ -315,7 +324,7 @@ int main(int argc, char** argv) {
         );
 
         r.draw_text(
-            "Buttons, Progress Bars (Determinate/Indeterminate), Layout Containers (VBox/HBox), ListBox & CheckListBox",
+            "Buttons (with vector icons), Images (GPU SDF rounded borders), Progress Bars, Layouts, Lists",
             arin::Vec2(40.0f, 40.0f),
             arin::Color::from_hex(0x4B5563),
             0.88f
@@ -338,9 +347,16 @@ int main(int argc, char** argv) {
             1.0f
         );
 
+        // Info vector icon badge in dialog
+        r.draw_icon(
+            arin::IconType::Info,
+            arin::Rect(dialog_x + 24.0f, dialog_y + 20.0f, 22.0f, 22.0f),
+            arin::Color::from_hex(0x0067C0)
+        );
+
         r.draw_text(
             "Save your work?",
-            arin::Vec2(dialog_x + 24.0f, dialog_y + 20.0f),
+            arin::Vec2(dialog_x + 54.0f, dialog_y + 20.0f),
             arin::Color::from_hex(0x111827),
             1.2f
         );

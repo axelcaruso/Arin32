@@ -34,6 +34,7 @@
 #include "input.hpp"
 #include "renderer.hpp"
 #include "widget.hpp"
+#include "icon.hpp"
 #include <string>
 #include <functional>
 
@@ -195,7 +196,25 @@ public:
     bool is_auto_resize() const { return m_auto_resize; }
 
     /**
-     * @brief Explicitly recalculates and resizes the button to tightly fit its label.
+     * @brief Attaches a crisp vector icon to the button, rendered preceding the text.
+     * @param icon Vector glyph identifier.
+     * @param size Uniform dimension of the icon in pixels (default: 16.0f).
+     * @param spacing Pixel gap between icon and text (default: 6.0f).
+     * @return Reference to this for chaining.
+     */
+    Button& set_icon(IconType icon, float size = 16.0f, float spacing = 6.0f);
+
+    /// @brief Gets active icon type.
+    IconType icon() const { return m_icon; }
+
+    /// @brief Checks if a valid icon is attached to this button.
+    bool has_icon() const { return m_icon != IconType::None; }
+
+    /**
+     * @brief Computes required width based on text length and horizontal padding.
+     *
+     * Automatically accounts for attached icon and icon-to-text spacing if present.
+     *
      * @param font Font engine to measure text with.
      * @param horizontal_padding Padding on left and right sides.
      * @return Reference to this for chaining.
@@ -290,6 +309,10 @@ private:
     ClickCallback m_click_cb;
     DetailedClickCallback m_detailed_click_cb;
     HoverCallback m_hover_cb;
+
+    IconType m_icon{IconType::None};
+    float m_icon_size{16.0f};
+    float m_icon_spacing{6.0f};
 };
 
 } // namespace arin

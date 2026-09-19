@@ -30,6 +30,7 @@
 #define ARIN32_RENDERER_RECT_PIPELINE_HPP
 
 #include "arin/types.hpp"
+#include "arin/icon.hpp"
 #include <cstdint>
 
 namespace arin {
@@ -94,6 +95,17 @@ public:
         const Rect& box,
         const Color& color,
         float thickness = 2.0f
+    );
+
+    /**
+     * @brief Draws a crisp, GPU-rendered vector system icon inside target bounds.
+     */
+    void draw_icon(
+        int viewport_width,
+        int viewport_height,
+        IconType icon,
+        const Rect& bounds,
+        const Color& color
     );
 
 private:

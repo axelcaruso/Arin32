@@ -38,6 +38,9 @@
 #include "progress_bar.hpp"
 #include "list_box.hpp"
 #include "layout.hpp"
+#include "texture.hpp"
+#include "image.hpp"
+#include "icon.hpp"
 #include <memory>
 #include <vector>
 #include <functional>
@@ -199,6 +202,41 @@ public:
      * @brief Adds an automatic layout container to the application.
      */
     std::shared_ptr<Layout> add_layout(std::shared_ptr<Layout> layout);
+
+    /**
+     * @brief Creates and adds an Image widget bound to a texture.
+     */
+    std::shared_ptr<Image> add_image(
+        std::shared_ptr<Texture> texture,
+        float x,
+        float y,
+        float width,
+        float height,
+        ImageScaleMode scale_mode = ImageScaleMode::Fit
+    );
+
+    /**
+     * @brief Creates and adds an Image widget by loading an image file from disk.
+     */
+    std::shared_ptr<Image> add_image(
+        const std::string& filepath,
+        float x,
+        float y,
+        float width,
+        float height,
+        ImageScaleMode scale_mode = ImageScaleMode::Fit
+    );
+
+    /**
+     * @brief Creates and adds a vector Icon widget.
+     */
+    std::shared_ptr<Icon> add_icon(
+        IconType icon,
+        float x,
+        float y,
+        float size = 16.0f,
+        const Color& color = Color(240, 240, 240)
+    );
 
     /**
      * @brief Registers an optional custom rendering hook called every frame.

@@ -7,6 +7,7 @@ add_executable(arin_tests
     test_list_box.cpp
     test_layout.cpp
     test_input.cpp
+    test_image_icon.cpp
 )
 
 target_link_libraries(arin_tests PRIVATE

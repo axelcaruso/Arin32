@@ -26,31 +26,35 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/**
- * @file arin.hpp
- * @brief Master header for Arin32 Graphical User Interface Library.
- *
- * Include this single header to access all Arin32 classes, structures,
- * widgets, typography, and rendering systems.
- */
+#include "arin/icon.hpp"
 
-#ifndef ARIN32_MASTER_HPP
-#define ARIN32_MASTER_HPP
+namespace arin {
 
-#include "types.hpp"
-#include "theme.hpp"
-#include "input.hpp"
-#include "font.hpp"
-#include "texture.hpp"
-#include "image.hpp"
-#include "icon.hpp"
-#include "renderer.hpp"
-#include "widget.hpp"
-#include "button.hpp"
-#include "progress_bar.hpp"
-#include "list_box.hpp"
-#include "layout.hpp"
-#include "window.hpp"
-#include "app.hpp"
+Icon::Icon(
+    IconType type,
+    float x,
+    float y,
+    float size,
+    const Color& color
+) : m_bounds(x, y, size, size),
+    m_type(type),
+    m_color(color) {}
 
-#endif // ARIN32_MASTER_HPP
+bool Icon::handle_mouse(const MouseEvent& ev) {
+    (void)ev;
+    return false;
+}
+
+void Icon::update(float dt) {
+    (void)dt;
+}
+
+void Icon::render(Renderer2D& renderer) {
+    if (!m_visible || m_type == IconType::None || m_bounds.width <= 0.0f || m_bounds.height <= 0.0f) {
+        return;
+    }
+
+    renderer.draw_icon(m_type, m_bounds, m_color);
+}
+
+} // namespace arin

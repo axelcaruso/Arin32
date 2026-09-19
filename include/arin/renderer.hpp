@@ -33,14 +33,19 @@
 #include "font.hpp"
 #include <string>
 #include <memory>
+#include <cstdint>
 
 namespace arin {
+
+class Texture;
+enum class IconType : uint8_t;
 
 // Forward declarations of internal modular pipelines
 namespace renderer {
 class RectPipeline;
 class TextPipeline;
 class ProgressPipeline;
+class ImagePipeline;
 } // namespace renderer
 
 /**
@@ -240,6 +245,53 @@ public:
     );
 
     /**
+     * @brief Draws a textured 2D image with optional SDF corner rounding and color tinting.
+     *
+     * @param texture Texture resource to sample.
+     * @param dest Target rectangle on screen in pixels.
+     * @param tint Color modulation multiplier (default: white, full opacity).
+     * @param corner_radius Corner curvature radius in pixels for anti-aliased rounded borders.
+     */
+    void draw_image(
+        const Texture& texture,
+        const Rect& dest,
+        const Color& tint = Color::white(),
+        float corner_radius = 0.0f
+    );
+
+    /**
+     * @brief Draws a sub-region of a 2D texture (sprite/atlas) to a screen rectangle.
+     *
+     * @param texture Texture resource.
+     * @param src_uv Normalized texture coordinates (x=u0, y=v0, width=u1-u0, height=v1-v0).
+     * @param dest Target rectangle on screen.
+     * @param tint Color modulation.
+     * @param corner_radius Corner curvature radius.
+     */
+    void draw_image(
+        const Texture& texture,
+        const Rect& src_uv,
+        const Rect& dest,
+        const Color& tint = Color::white(),
+        float corner_radius = 0.0f
+    );
+
+    /**
+     * @brief Draws a crisp, GPU-rendered vector system icon.
+     *
+     * Vector icons scale losslessly and adapt to any tint color.
+     *
+     * @param icon Vector glyph identifier to render.
+     * @param bounds Bounding box enclosing the icon.
+     * @param color Fill and stroke color.
+     */
+    void draw_icon(
+        IconType icon,
+        const Rect& bounds,
+        const Color& color
+    );
+
+    /**
      * @brief Access the embedded Font instance for measurement and metrics.
      */
     Font& font() { return m_font; }
@@ -260,6 +312,7 @@ private:
     std::unique_ptr<renderer::RectPipeline> m_rect_pipeline;
     std::unique_ptr<renderer::TextPipeline> m_text_pipeline;
     std::unique_ptr<renderer::ProgressPipeline> m_progress_pipeline;
+    std::unique_ptr<renderer::ImagePipeline> m_image_pipeline;
 };
 
 } // namespace arin

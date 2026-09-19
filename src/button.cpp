@@ -201,10 +201,19 @@ Button& Button::set_auto_resize(bool enable) {
     return *this;
 }
 
+Button& Button::set_icon(IconType icon, float size, float spacing) {
+    m_icon = icon;
+    m_icon_size = size;
+    m_icon_spacing = spacing;
+    return *this;
+}
+
 Button& Button::fit_to_text(const Font& font, float horizontal_padding) {
     Vec2 size = font.measure_text(m_text, m_style.text_scale);
-    m_bounds.width = size.x + horizontal_padding * 2.0f;
-    m_bounds.height = std::max(m_bounds.height, size.y + m_style.padding.top + m_style.padding.bottom);
+    float extra_icon_w = (m_icon != IconType::None) ? (m_icon_size + (m_text.empty() ? 0.0f : m_icon_spacing)) : 0.0f;
+    m_bounds.width = size.x + extra_icon_w + horizontal_padding * 2.0f;
+    float content_h = std::max(size.y, (m_icon != IconType::None) ? m_icon_size : 0.0f);
+    m_bounds.height = std::max(m_bounds.height, content_h + m_style.padding.top + m_style.padding.bottom);
     return *this;
 }
 
@@ -213,14 +222,17 @@ Button& Button::fit_to_text(const Font& font, float horizontal_padding) {
  */
 void Button::render(Renderer2D& renderer) {
     // 1. Content-driven Sizing & Overflow Prevention Guarantee
-    // Text can NEVER bleed outside the button boundary.
+    // Text and icons can NEVER bleed outside the button boundary.
     Vec2 text_size = renderer.font().measure_text(m_text, m_style.text_scale);
     float effective_scale = m_style.text_scale;
+    float icon_w = (m_icon != IconType::None) ? (m_icon_size + (m_text.empty() ? 0.0f : m_icon_spacing)) : 0.0f;
+    float total_content_w = text_size.x + icon_w;
+    float max_content_h = std::max(text_size.y, (m_icon != IconType::None) ? m_icon_size : 0.0f);
 
     if (m_auto_resize) {
-        // Automatically expand the button if its label needs more room
-        float min_w = text_size.x + m_style.padding.left + m_style.padding.right;
-        float min_h = text_size.y + m_style.padding.top + m_style.padding.bottom;
+        // Automatically expand the button if its label and icon need more room
+        float min_w = total_content_w + m_style.padding.left + m_style.padding.right;
+        float min_h = max_content_h + m_style.padding.top + m_style.padding.bottom;
         if (m_bounds.width < min_w) {
             m_bounds.width = min_w;
         }
@@ -229,9 +241,11 @@ void Button::render(Renderer2D& renderer) {
         }
     } else {
         // If fixed dimensions were explicitly enforced, dynamically scale text down to fit
-        float avail_w = m_bounds.width - m_style.padding.left - m_style.padding.right;
+        float avail_w = m_bounds.width - m_style.padding.left - m_style.padding.right - icon_w;
         if (avail_w > 0.0f && text_size.x > avail_w) {
             effective_scale *= (avail_w / text_size.x);
+            text_size = renderer.font().measure_text(m_text, effective_scale);
+            total_content_w = text_size.x + icon_w;
         }
     }
 
@@ -287,13 +301,31 @@ void Button::render(Renderer2D& renderer) {
         m_style.border_width
     );
 
-    // Render centered button label with guaranteed hardware scissor clipping
-    renderer.draw_text_centered_clipped(
-        m_text,
-        m_bounds,
-        text_color,
-        effective_scale
-    );
+    // Render button content (icon + text) with guaranteed containment
+    if (m_icon != IconType::None) {
+        float start_x = m_bounds.x + (m_bounds.width - total_content_w) * 0.5f;
+        float icon_y = m_bounds.y + (m_bounds.height - m_icon_size) * 0.5f;
+        renderer.draw_icon(m_icon, Rect(start_x, icon_y, m_icon_size, m_icon_size), text_color);
+
+        if (!m_text.empty()) {
+            float text_x = start_x + m_icon_size + m_icon_spacing;
+            Rect text_bounds(text_x, m_bounds.y, text_size.x, m_bounds.height);
+            renderer.draw_text_centered_clipped(
+                m_text,
+                text_bounds,
+                text_color,
+                effective_scale
+            );
+        }
+    } else {
+        // Render centered button label with guaranteed hardware scissor clipping
+        renderer.draw_text_centered_clipped(
+            m_text,
+            m_bounds,
+            text_color,
+            effective_scale
+        );
+    }
 }
 
 } // namespace arin

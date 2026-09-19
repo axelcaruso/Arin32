@@ -27,9 +27,12 @@
  */
 
 #include "arin/renderer.hpp"
+#include "arin/texture.hpp"
+#include "arin/icon.hpp"
 #include "rect_pipeline.hpp"
 #include "text_pipeline.hpp"
 #include "progress_pipeline.hpp"
+#include "image_pipeline.hpp"
 
 #include <GL/glew.h>
 #include <iostream>
@@ -40,7 +43,8 @@ namespace arin {
 Renderer2D::Renderer2D()
     : m_rect_pipeline(std::make_unique<renderer::RectPipeline>()),
       m_text_pipeline(std::make_unique<renderer::TextPipeline>()),
-      m_progress_pipeline(std::make_unique<renderer::ProgressPipeline>()) {}
+      m_progress_pipeline(std::make_unique<renderer::ProgressPipeline>()),
+      m_image_pipeline(std::make_unique<renderer::ImagePipeline>()) {}
 
 Renderer2D::~Renderer2D() {
     shutdown();
@@ -71,7 +75,13 @@ bool Renderer2D::init() {
         return false;
     }
 
-    // 4. Upload Embedded Font Atlas Texture
+    // 4. Initialize Image Pipeline
+    if (!m_image_pipeline->init()) {
+        std::cerr << "[Arin32::Renderer2D] Image pipeline initialization failed." << std::endl;
+        return false;
+    }
+
+    // 5. Upload Embedded Font Atlas Texture
     if (!m_font.init_gl()) {
         std::cerr << "[Arin32::Renderer2D] Font atlas texture initialization failed." << std::endl;
         return false;
@@ -89,6 +99,7 @@ void Renderer2D::shutdown() {
     if (m_rect_pipeline) m_rect_pipeline->shutdown();
     if (m_text_pipeline) m_text_pipeline->shutdown();
     if (m_progress_pipeline) m_progress_pipeline->shutdown();
+    if (m_image_pipeline) m_image_pipeline->shutdown();
 }
 
 /**
@@ -279,6 +290,72 @@ void Renderer2D::draw_text_centered_clipped(
     m_text_pipeline->flush(m_viewport_width, m_viewport_height, m_font.texture_id());
 
     glDisable(GL_SCISSOR_TEST);
+}
+
+void Renderer2D::draw_image(
+    const Texture& texture,
+    const Rect& dest,
+    const Color& tint,
+    float corner_radius
+) {
+    if (!m_image_pipeline || !texture.is_valid()) return;
+
+    // Flush any pending batched typography before switching textures
+    flush();
+
+    // Default UV covers the full texture [0.0, 1.0] in both axes
+    Rect full_uv(0.0f, 0.0f, 1.0f, 1.0f);
+    m_image_pipeline->draw_image(
+        m_viewport_width,
+        m_viewport_height,
+        texture.handle(),
+        dest,
+        full_uv,
+        tint,
+        corner_radius
+    );
+}
+
+void Renderer2D::draw_image(
+    const Texture& texture,
+    const Rect& src_uv,
+    const Rect& dest,
+    const Color& tint,
+    float corner_radius
+) {
+    if (!m_image_pipeline || !texture.is_valid()) return;
+
+    // Flush pending text before drawing texture quad
+    flush();
+
+    m_image_pipeline->draw_image(
+        m_viewport_width,
+        m_viewport_height,
+        texture.handle(),
+        dest,
+        src_uv,
+        tint,
+        corner_radius
+    );
+}
+
+void Renderer2D::draw_icon(
+    IconType icon,
+    const Rect& bounds,
+    const Color& color
+) {
+    if (!m_rect_pipeline || icon == IconType::None) return;
+
+    // Flush pending batched text before rendering vector icon
+    flush();
+
+    m_rect_pipeline->draw_icon(
+        m_viewport_width,
+        m_viewport_height,
+        icon,
+        bounds,
+        color
+    );
 }
 
 } // namespace arin

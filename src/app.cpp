@@ -179,6 +179,44 @@ std::shared_ptr<Layout> App::add_layout(std::shared_ptr<Layout> layout) {
     return layout;
 }
 
+std::shared_ptr<Image> App::add_image(
+    std::shared_ptr<Texture> texture,
+    float x,
+    float y,
+    float width,
+    float height,
+    ImageScaleMode scale_mode
+) {
+    auto img = std::make_shared<Image>(std::move(texture), x, y, width, height, scale_mode);
+    m_widgets.push_back(img);
+    return img;
+}
+
+std::shared_ptr<Image> App::add_image(
+    const std::string& filepath,
+    float x,
+    float y,
+    float width,
+    float height,
+    ImageScaleMode scale_mode
+) {
+    auto img = std::make_shared<Image>(filepath, x, y, width, height, scale_mode);
+    m_widgets.push_back(img);
+    return img;
+}
+
+std::shared_ptr<Icon> App::add_icon(
+    IconType icon,
+    float x,
+    float y,
+    float size,
+    const Color& color
+) {
+    auto ic = std::make_shared<Icon>(icon, x, y, size, color);
+    m_widgets.push_back(ic);
+    return ic;
+}
+
 void App::on_frame(FrameCallback cb) {
     m_custom_frame_cb = std::move(cb);
 }
