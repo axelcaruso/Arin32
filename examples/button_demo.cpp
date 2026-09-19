@@ -365,16 +365,21 @@ int main(int argc, char** argv) {
             0.92f
         );
 
-        // Divider separating dialog body from footer
+        // Divider separating dialog body from footer (strictly inside card border)
         r.draw_rect(
-            arin::Rect(dialog_x, footer_y, dialog_w, 1.0f),
+            arin::Rect(dialog_x + 1.0f, footer_y, dialog_w - 2.0f, 1.0f),
             arin::Color::from_hex(0xE5E7EB)
         );
 
-        // Dialog Footer Background (#F9FAFB)
+        // Dialog Footer Background (#F9FAFB) strictly inside the card border
         r.draw_rounded_rect(
-            arin::Rect(dialog_x, footer_y + 1.0f, dialog_w, dialog_h - 146.0f),
-            6.0f,
+            arin::Rect(dialog_x + 1.0f, footer_y + 1.0f, dialog_w - 2.0f, dialog_h - 147.0f),
+            5.0f,
+            arin::Color::from_hex(0xF9FAFB)
+        );
+        // Square off top corners of footer below divider
+        r.draw_rect(
+            arin::Rect(dialog_x + 1.0f, footer_y + 1.0f, dialog_w - 2.0f, 12.0f),
             arin::Color::from_hex(0xF9FAFB)
         );
 

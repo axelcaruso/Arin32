@@ -82,6 +82,32 @@ ListBox& ListBox::set_checkbox_mode(bool enable) {
     return *this;
 }
 
+ListBox& ListBox::set_style(const ListBoxStyle& style) {
+    m_style = style;
+    return *this;
+}
+
+ListBox& ListBox::set_selection_color(const Color& color) {
+    m_style.selection_color = color;
+    m_style.checkbox_checked_color = color;
+    return *this;
+}
+
+ListBox& ListBox::set_text_color(const Color& color) {
+    m_style.text_color = color;
+    return *this;
+}
+
+ListBox& ListBox::set_background_color(const Color& color) {
+    m_style.background_color = color;
+    return *this;
+}
+
+ListBox& ListBox::set_border_color(const Color& color) {
+    m_style.border_color = color;
+    return *this;
+}
+
 ListBox& ListBox::add_item(const std::string& text, bool checked) {
     m_items.emplace_back(text, checked);
     clamp_scroll();
@@ -215,9 +241,9 @@ Rect ListBox::scrollbar_track_rect() const {
     const float track_w = 7.0f;
     const float margin_top = 6.0f;
     const float margin_bottom = 6.0f;
-    const float margin_right = 5.0f;
+    const float pad = m_style.item_padding;
     return Rect(
-        m_bounds.x + m_bounds.width - track_w - margin_right,
+        m_bounds.x + m_bounds.width - track_w - pad,
         m_bounds.y + margin_top,
         track_w,
         std::max(0.0f, m_bounds.height - margin_top - margin_bottom)
@@ -337,21 +363,32 @@ bool ListBox::handle_mouse(const MouseEvent& ev) {
 void ListBox::render(Renderer2D& renderer) {
     if (m_bounds.width <= 0.0f || m_bounds.height <= 0.0f) return;
 
-    // 1. Outer Container: Flat white card with subtle 1px border (#D1D5DB) and 3px radius
+    // 1. Outer Container: Flat card with customizable background, border, and radius
     renderer.draw_rounded_rect(
         m_bounds,
-        3.0f,
-        Color::white(),
-        Color::from_hex(0xD1D5DB),
-        1.0f
+        m_style.corner_radius,
+        m_style.background_color,
+        m_style.border_color,
+        m_style.border_width
     );
 
-    // Calculate content geometry
+    // Calculate content geometry with symmetrical item_padding
+    const float pad = m_style.item_padding;
+    const float track_w = 7.0f;
     bool has_scroll = needs_scrollbar();
-    float content_w = has_scroll ? (m_bounds.width - 14.0f) : (m_bounds.width - 2.0f);
+
+    // Symmetrical layout:
+    // Left gap = pad
+    // Content width = content_w
+    // Gap between content and scrollbar = pad (100% IDENTICAL to right padding!)
+    // Scrollbar width = track_w
+    // Gap between scrollbar and right card border = pad (100% IDENTICAL to left padding!)
+    float content_w = has_scroll
+        ? std::max(0.0f, m_bounds.width - (3.0f * pad + track_w))
+        : std::max(0.0f, m_bounds.width - 2.0f * pad);
 
     // 2. Hardware Scissor Clipping for item list
-    int scissor_x = static_cast<int>(std::max(0.0f, m_bounds.x + 1.0f));
+    int scissor_x = static_cast<int>(std::max(0.0f, m_bounds.x + pad));
     int scissor_y = renderer.viewport_height() - static_cast<int>(m_bounds.y + m_bounds.height - 1.0f);
     int scissor_w = static_cast<int>(content_w);
     int scissor_h = static_cast<int>(m_bounds.height - 2.0f);
@@ -368,47 +405,47 @@ void ListBox::render(Renderer2D& renderer) {
             continue;
         }
 
-        Rect row_rect(m_bounds.x + 1.0f, item_y, content_w, m_item_height);
+        Rect row_rect(m_bounds.x + pad, item_y, content_w, m_item_height);
         bool is_selected = (static_cast<int>(i) == m_selected_index);
         bool is_hovered = (static_cast<int>(i) == m_hovered_index);
 
         // Background highlight
         if (is_selected && m_mode == ListBoxMode::Standard) {
-            // Windows 10 Accent Blue selection
-            renderer.draw_rounded_rect(row_rect, 0.0f, Color::from_hex(0x0067C0));
+            renderer.draw_rounded_rect(row_rect, m_style.item_corner_radius, m_style.selection_color);
         } else if (is_hovered) {
-            // Subtle hover slate tint
-            renderer.draw_rounded_rect(row_rect, 0.0f, Color::from_hex(0xF3F4F6));
+            renderer.draw_rounded_rect(row_rect, m_style.item_corner_radius, m_style.hover_color);
         }
 
         // Text & Checkbox coordinates
         Color text_color;
         if (is_selected && m_mode == ListBoxMode::Standard) {
-            text_color = Color::white();
+            text_color = m_style.selected_text_color;
+        } else if (is_hovered) {
+            text_color = m_style.hover_text_color;
         } else {
-            text_color = Color::from_hex(0x111827);
+            text_color = m_style.text_color;
         }
 
-        float text_x = m_bounds.x + 8.0f;
+        float text_x = row_rect.x + 8.0f;
 
         if (m_mode == ListBoxMode::CheckBox) {
             // 16x16 Checkbox with 3px corner radius
             float chk_size = 16.0f;
-            float chk_x = m_bounds.x + 8.0f;
+            float chk_x = row_rect.x + 6.0f;
             float chk_y = item_y + (m_item_height - chk_size) * 0.5f;
             Rect chk_rect(chk_x, chk_y, chk_size, chk_size);
 
             if (m_items[i].checked) {
-                // Checked: Accent Blue filled box with white checkmark
-                renderer.draw_rounded_rect(chk_rect, 3.0f, Color::from_hex(0x0067C0));
-                renderer.draw_checkmark(chk_rect, Color::white(), 1.8f);
+                // Checked: Accent fill with white checkmark
+                renderer.draw_rounded_rect(chk_rect, 3.0f, m_style.checkbox_checked_color);
+                renderer.draw_checkmark(chk_rect, m_style.checkmark_color, 1.8f);
             } else {
-                // Unchecked: White box with subtle grey border
+                // Unchecked: White box with subtle border
                 renderer.draw_rounded_rect(
                     chk_rect,
                     3.0f,
-                    Color::white(),
-                    Color::from_hex(0x9CA3AF),
+                    m_style.checkbox_unchecked_color,
+                    m_style.checkbox_border_color,
                     1.0f
                 );
             }
@@ -432,16 +469,16 @@ void ListBox::render(Renderer2D& renderer) {
         // Subtle track background capsule
         renderer.draw_rounded_rect(
             track,
-            4.0f,
-            Color::from_hex(0xF3F4F6)
+            3.5f,
+            m_style.scrollbar_track_color
         );
 
         // Sleek thumb capsule
         Color thumb_col = m_dragging_scrollbar
-            ? Color::from_hex(0x6B7280)
-            : Color::from_hex(0x9CA3AF);
+            ? m_style.scrollbar_thumb_active_color
+            : m_style.scrollbar_thumb_color;
 
-        renderer.draw_rounded_rect(thumb, 4.0f, thumb_col);
+        renderer.draw_rounded_rect(thumb, 3.5f, thumb_col);
     }
 }
 

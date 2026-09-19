@@ -285,6 +285,17 @@ struct Color {
         );
     }
 
+    constexpr bool operator==(const Color& rhs) const {
+        return std::abs(r - rhs.r) < 1e-4f &&
+               std::abs(g - rhs.g) < 1e-4f &&
+               std::abs(b - rhs.b) < 1e-4f &&
+               std::abs(a - rhs.a) < 1e-4f;
+    }
+
+    constexpr bool operator!=(const Color& rhs) const {
+        return !(*this == rhs);
+    }
+
     // Common Color Presets
     static constexpr Color transparent() { return Color(0.0f, 0.0f, 0.0f, 0.0f); }
     static constexpr Color black()       { return Color(0.0f, 0.0f, 0.0f, 1.0f); }
@@ -318,6 +329,17 @@ struct Padding {
         : left(horizontal), top(vertical), right(horizontal), bottom(vertical) {}
     constexpr Padding(float in_left, float in_top, float in_right, float in_bottom)
         : left(in_left), top(in_top), right(in_right), bottom(in_bottom) {}
+
+    constexpr bool operator==(const Padding& rhs) const {
+        return std::abs(left - rhs.left) < 1e-5f &&
+               std::abs(top - rhs.top) < 1e-5f &&
+               std::abs(right - rhs.right) < 1e-5f &&
+               std::abs(bottom - rhs.bottom) < 1e-5f;
+    }
+
+    constexpr bool operator!=(const Padding& rhs) const {
+        return !(*this == rhs);
+    }
 };
 
 } // namespace arin

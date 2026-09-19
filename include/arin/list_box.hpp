@@ -61,6 +61,64 @@ struct ListBoxItem {
 };
 
 /**
+ * @brief Visual styling configuration for ListBox and CheckListBox.
+ */
+struct ListBoxStyle {
+    Color background_color{Color::white()};
+    Color border_color{Color::from_hex(0xD1D5DB)};
+    float border_width{1.0f};
+    float corner_radius{3.0f};
+
+    Color text_color{Color::from_hex(0x111827)};
+    Color hover_color{Color::from_hex(0xF3F4F6)};
+    Color hover_text_color{Color::from_hex(0x111827)};
+    Color selection_color{Color::from_hex(0x0067C0)};
+    Color selected_text_color{Color::white()};
+
+    Color checkbox_checked_color{Color::from_hex(0x0067C0)};
+    Color checkmark_color{Color::white()};
+    Color checkbox_unchecked_color{Color::white()};
+    Color checkbox_border_color{Color::from_hex(0x9CA3AF)};
+
+    Color scrollbar_track_color{Color::from_hex(0xF3F4F6)};
+    Color scrollbar_thumb_color{Color::from_hex(0x9CA3AF)};
+    Color scrollbar_thumb_active_color{Color::from_hex(0x6B7280)};
+
+    float item_padding{4.0f};       ///< Symmetrical padding between border, item, and scrollbar
+    float item_corner_radius{3.0f}; ///< Corner radius of selection/hover row highlight
+
+    static ListBoxStyle light() {
+        return ListBoxStyle{};
+    }
+
+    static ListBoxStyle dark() {
+        ListBoxStyle style;
+        style.background_color = Color::from_hex(0x1F2937);
+        style.border_color = Color::from_hex(0x374151);
+        style.text_color = Color::from_hex(0xF9FAFB);
+        style.hover_color = Color::from_hex(0x374151);
+        style.hover_text_color = Color::white();
+        style.selection_color = Color::from_hex(0x2563EB);
+        style.selected_text_color = Color::white();
+        style.checkbox_checked_color = Color::from_hex(0x2563EB);
+        style.checkmark_color = Color::white();
+        style.checkbox_unchecked_color = Color::from_hex(0x111827);
+        style.checkbox_border_color = Color::from_hex(0x4B5563);
+        style.scrollbar_track_color = Color::from_hex(0x374151);
+        style.scrollbar_thumb_color = Color::from_hex(0x6B7280);
+        style.scrollbar_thumb_active_color = Color::from_hex(0x9CA3AF);
+        return style;
+    }
+
+    static ListBoxStyle accent(const Color& accent_color) {
+        ListBoxStyle style;
+        style.selection_color = accent_color;
+        style.checkbox_checked_color = accent_color;
+        return style;
+    }
+};
+
+/**
  * @brief Modern, hardware-accelerated List Box and Check Box List widget.
  *
  * Features:
@@ -92,6 +150,11 @@ public:
     ListBox& set_item_height(float height);
     ListBox& set_mode(ListBoxMode mode);
     ListBox& set_checkbox_mode(bool enable);
+    ListBox& set_style(const ListBoxStyle& style);
+    ListBox& set_selection_color(const Color& color);
+    ListBox& set_text_color(const Color& color);
+    ListBox& set_background_color(const Color& color);
+    ListBox& set_border_color(const Color& color);
 
     // --- Item Management ---
 
@@ -105,6 +168,7 @@ public:
     const Rect& bounds() const override { return m_bounds; }
     ListBoxMode mode() const { return m_mode; }
     bool is_checkbox_mode() const { return m_mode == ListBoxMode::CheckBox; }
+    const ListBoxStyle& style() const { return m_style; }
     size_t item_count() const { return m_items.size(); }
     float item_height() const { return m_item_height; }
 
@@ -146,6 +210,7 @@ private:
 
     Rect m_bounds{0.0f, 0.0f, 220.0f, 180.0f};
     ListBoxMode m_mode{ListBoxMode::Standard};
+    ListBoxStyle m_style;
     float m_item_height{26.0f};
 
     std::vector<ListBoxItem> m_items;

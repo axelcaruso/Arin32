@@ -17,7 +17,7 @@ Welcome to the official developer documentation for **Arin32**, a lightweight, h
    - [4.5 `arin::ProgressBarStyle`](#45-arinprogressbarstyle)
    - [4.6 `arin::IWidget` (Polymorphic Widget Base)](#46-ariniwidget-polymorphic-widget-base)
    - [4.7 Automatic Layout Containers (`arin::Layout`, `arin::VBox`, `arin::HBox`)](#47-automatic-layout-containers-arinlayout-arinvbox-arinhbox)
-   - [4.8 List Box Widgets (`arin::ListBox`, `arin::CheckListBox`, `arin::ListBoxMode`)](#48-list-box-widgets-arinlistbox-arinchecklistbox-arinlistboxmode)
+   - [4.8 List Box Widgets (`arin::ListBox`, `arin::CheckListBox`, `arin::ListBoxMode`, `arin::ListBoxStyle`)](#48-list-box-widgets-arinlistbox-arinchecklistbox-arinlistboxmode-arinlistboxstyle)
    - [4.9 `arin::Theme`](#49-arintheme)
    - [4.10 `arin::Renderer2D`](#410-arinrenderer2d)
    - [4.11 `arin::Font`](#411-arinfont)
@@ -433,9 +433,9 @@ Eliminates manual pixel coordinate calculations by automatically arranging child
 
 ---
 
-### 4.8 List Box Widgets (`arin::ListBox`, `arin::CheckListBox`, `arin::ListBoxMode`)
+### 4.8 List Box Widgets (`arin::ListBox`, `arin::CheckListBox`, `arin::ListBoxMode`, `arin::ListBoxStyle`)
 
-Implements modern Windows 10 style list boxes with single-selection, multiple-selection check boxes, smooth hardware-clipped item scrolling, and draggable scrollbars.
+Implements modern Windows 10 style list boxes with single-selection, multiple-selection check boxes, smooth hardware-clipped item scrolling, customizable styles and themes, and draggable scrollbars.
 
 ```cpp
 #include <arin/list_box.hpp>
@@ -472,10 +472,23 @@ Implements modern Windows 10 style list boxes with single-selection, multiple-se
 - `on_selection_changed(std::function<void(int index, const std::string& text)> cb)`: Fired on row selection.
 - `on_item_toggled(std::function<void(int index, bool checked)> cb)`: Fired on checkbox toggle.
 
-#### Scrolling & Scrollbar
+#### Visual Styling & Colors (`ListBoxStyle`)
+Full visual customization of card borders, row highlights, text colors, checkbox states, and scrollbar appearance:
+- `set_style(const ListBoxStyle& style)`: Replaces full style configuration.
+- `set_selection_color(const Color& color)`: Changes highlight color for selected row.
+- `set_text_color(const Color& color)`: Changes standard row text color.
+- `set_background_color(const Color& color)`: Changes container card background.
+- `set_border_color(const Color& color)`: Changes container border outline.
+- Built-in presets:
+  - `ListBoxStyle::light()`: Default clean Windows 10 look (white card, `#D1D5DB` border, `#0067C0` accent).
+  - `ListBoxStyle::dark()`: Deep dark mode (`#1F2937` card, `#374151` border, `#2563EB` accent).
+  - `ListBoxStyle::accent(const Color& color)`: Customizes primary accent color for selection and checked boxes.
+
+#### Scrolling & Geometry
 - `bool needs_scrollbar() const`: True if items overflow visible container height.
 - `float scroll_offset() const` / `float max_scroll_offset() const`: Scroll pixel positions.
 - Smooth mouse wheel scrolling and interactive thumb dragging.
+- **Symmetrical Geometry**: The gap between the row selection highlight and the scrollbar exactly matches the scrollbar's margin to the right border (`m_style.item_padding = 4.0f`), guaranteeing perfect visual symmetry.
 - Content rendering strictly clipped to card boundaries via `glScissor`.
 
 ---

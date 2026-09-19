@@ -211,3 +211,36 @@ TEST(ArinListBoxTest, ScrollOffsetClampingAndWheel) {
     lb.handle_mouse(wheel_up);
     EXPECT_FLOAT_EQ(lb.scroll_offset(), 0.0f);
 }
+
+TEST(ArinListBoxTest, CustomStylingAndColors) {
+    ListBox lb(0.0f, 0.0f, 200.0f, 100.0f);
+
+    // Test default style
+    EXPECT_EQ(lb.style().background_color, Color::white());
+    EXPECT_EQ(lb.style().selection_color, Color::from_hex(0x0067C0));
+
+    // Test individual setters
+    lb.set_selection_color(Color::from_hex(0x10B981));
+    EXPECT_EQ(lb.style().selection_color, Color::from_hex(0x10B981));
+
+    lb.set_text_color(Color::from_hex(0x374151));
+    EXPECT_EQ(lb.style().text_color, Color::from_hex(0x374151));
+
+    lb.set_background_color(Color::from_hex(0xFAFAFA));
+    EXPECT_EQ(lb.style().background_color, Color::from_hex(0xFAFAFA));
+
+    lb.set_border_color(Color::from_hex(0xE5E7EB));
+    EXPECT_EQ(lb.style().border_color, Color::from_hex(0xE5E7EB));
+
+    // Test preset dark style
+    lb.set_style(ListBoxStyle::dark());
+    EXPECT_EQ(lb.style().background_color, Color::from_hex(0x1F2937));
+    EXPECT_EQ(lb.style().selection_color, Color::from_hex(0x2563EB));
+    EXPECT_EQ(lb.style().text_color, Color::from_hex(0xF9FAFB));
+
+    // Test preset accent style
+    lb.set_style(ListBoxStyle::accent(Color::from_hex(0x8B5CF6)));
+    EXPECT_EQ(lb.style().selection_color, Color::from_hex(0x8B5CF6));
+    EXPECT_EQ(lb.style().checkbox_checked_color, Color::from_hex(0x8B5CF6));
+}
+
