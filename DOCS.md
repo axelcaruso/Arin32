@@ -1150,6 +1150,281 @@ OS abstraction isolating window creation, swap buffers, clipboard, and input eve
 
 ---
 
+### 4.20 Application Menu Bar (`arin::MenuBar`)
+
+```cpp
+#include <arin/menu_bar.hpp>
+```
+
+A horizontal top-level menu bar ("File", "Edit", "View", "Tools", "Help") anchored to the application window. Each top-level title drops down a cascading `arin::ContextMenu` upon click or hover.
+
+#### Constructors
+- `MenuBar()`: Defaults to bounds `[0, 0, 800, 28]`.
+- `explicit MenuBar(const Rect& bounds)`: Initializes menu bar with custom bounds.
+
+#### Menu Management
+- `ContextMenu& add_menu(std::string title)`: Appends a new top-level menu title and returns reference to its associated dropdown `ContextMenu`.
+- `bool remove_menu(size_t index)`: Removes menu at index.
+- `const std::string& menu_title(size_t index) const`: Returns label of menu header.
+- `ContextMenu* get_menu(size_t index) noexcept`: Returns pointer to dropdown menu at index.
+- `ContextMenu* find_menu(const std::string& title) noexcept`: Finds menu by label.
+- `size_t menu_count() const noexcept`: Number of top-level menus.
+- `void clear() noexcept`: Clears all registered menus and closes dropdowns.
+
+#### Interactive State
+- `bool is_open() const noexcept`: Checks if any dropdown menu is currently opened.
+- `void open_menu(size_t index)`: Opens the dropdown menu at index programmatically.
+- `void close_active_menu() noexcept`: Closes the currently opened menu dropdown.
+- `int active_menu_index() const noexcept`: Index of active dropdown or `-1`.
+
+#### Keyboard and Mouse Navigation
+- **Left / Right arrow keys**: Switch horizontally between adjacent dropdown menus.
+- **Escape**: Closes active menu.
+- **Hover switching**: Moving mouse across top-level headers while a menu is open immediately opens the hovered menu (standard desktop behavior).
+
+#### Example
+```cpp
+auto menu_bar = std::make_shared<arin::MenuBar>(arin::Rect{0.0f, 0.0f, 1024.0f, 28.0f});
+
+auto& file_menu = menu_bar->add_menu("File");
+file_menu.add_item("New", "Ctrl+N")
+         .add_item("Open...", "Ctrl+O")
+         .add_separator()
+         .add_item("Exit", []() { /* handle exit */ });
+
+auto& edit_menu = menu_bar->add_menu("Edit");
+edit_menu.add_item("Undo", "Ctrl+Z")
+         .add_item("Redo", "Ctrl+Y");
+
+app.add_widget(menu_bar);
+```
+
+---
+
+### 4.21 Tabbed Views & Containers (`arin::TabView`)
+
+```cpp
+#include <arin/tab_view.hpp>
+```
+
+A tab container that hosts multiple pages/widgets and allows users to switch between views via interactive tab headers. Supports closeable tabs, keyboard tab cycling (`Ctrl+Tab`), and custom styling.
+
+#### Constructors
+- `TabView()`: Default tab view container (`[0, 0, 600, 400]`).
+- `explicit TabView(const Rect& bounds)`: Initializes container with custom dimensions.
+
+#### Tab Management
+- `size_t add_tab(std::string title, std::shared_ptr<IWidget> content = nullptr, bool closable = false)`: Adds a tab with optional content widget and returns tab index.
+- `bool remove_tab(size_t index)`: Removes tab at index, automatically clamping active tab.
+- `void clear_tabs() noexcept`: Removes all tabs.
+- `size_t tab_count() const noexcept`: Total number of tabs.
+
+#### Tab Selection & Content
+- `void set_active_tab(size_t index)`: Switches active view to tab at index.
+- `int active_tab_index() const noexcept`: Returns current tab index or `-1`.
+- `std::shared_ptr<IWidget> active_content() const noexcept`: Returns active child widget.
+- `const std::string& tab_title(size_t index) const`: Gets title of tab at index.
+- `void set_tab_title(size_t index, std::string title)`: Sets tab label.
+- `Rect content_area_bounds() const noexcept`: Computes interior content viewport below tab header row.
+
+#### Callbacks
+- `void on_tab_changed(std::function<void(size_t index)> cb)`: Fired on tab switch.
+- `void on_tab_close_requested(std::function<void(size_t index)> cb)`: Fired when close button ('x') on a closable tab is clicked.
+
+#### Example
+```cpp
+auto tab_view = std::make_shared<arin::TabView>(arin::Rect{20.0f, 40.0f, 640.0f, 480.0f});
+
+auto editor_page = std::make_shared<arin::TextInput>("Initial buffer contents...");
+tab_view->add_tab("Document 1.txt", editor_page, true);
+
+auto settings_btn = std::make_shared<arin::Button>("Apply Settings");
+tab_view->add_tab("Settings", settings_btn, false);
+
+tab_view->on_tab_close_requested([tab_view](size_t index) {
+    tab_view->remove_tab(index);
+});
+
+app.add_widget(tab_view);
+```
+
+---
+
+### 4.22 Hierarchical Tree View (`arin::TreeView`, `arin::TreeNode`)
+
+```cpp
+#include <arin/tree_view.hpp>
+```
+
+A hierarchical tree view component with collapsible/expandable nodes, vector icons, depth indentation, single selection, and full keyboard navigation (Up/Down/Left/Right).
+
+#### `arin::TreeNode` Methods & Properties
+- `std::string label`: Display text of the node.
+- `std::string icon_path`: Path to vector SVG or bitmap icon.
+- `IconType icon`: Built-in vector icon enum.
+- `bool is_expanded`: Collapsed / expanded state.
+- `bool is_selected`: Selection state.
+- `std::weak_ptr<TreeNode> parent`: Pointer to parent node.
+- `std::vector<std::shared_ptr<TreeNode>> children`: Child nodes.
+- `std::shared_ptr<TreeNode> add_child(std::string text, std::string icon_filepath = "")`: Appends child node.
+- `bool remove_child(const std::string& child_id)`: Removes child node by ID.
+- `void expand_all() noexcept`: Recursively expands this node and all descendants.
+- `void collapse_all() noexcept`: Recursively collapses this node and all descendants.
+
+#### `arin::TreeView` Methods
+- `std::shared_ptr<TreeNode> add_root(std::string label, std::string icon_filepath = "")`: Creates and appends top-level root node.
+- `const std::vector<std::shared_ptr<TreeNode>>& roots() const noexcept`: Accesses top-level root nodes.
+- `void clear() noexcept`: Clears all nodes and selection.
+- `std::shared_ptr<TreeNode> selected_node() const noexcept`: Returns selected node or `nullptr`.
+- `void select_node(std::shared_ptr<TreeNode> node)`: Selects specified node.
+- `void clear_selection() noexcept`: Deselects current node.
+- `void on_selection_changed(std::function<void(std::shared_ptr<TreeNode> node)> cb)`: Selection change callback.
+- `void on_node_expanded(std::function<void(std::shared_ptr<TreeNode> node, bool is_expanded)> cb)`: Node expand/collapse callback.
+- `void on_node_double_clicked(std::function<void(std::shared_ptr<TreeNode> node)> cb)`: Double click callback.
+
+#### Keyboard Navigation
+- **Up / Down**: Navigates through visible flattened tree nodes.
+- **Right**: Expands collapsed node; if already expanded, moves to first child.
+- **Left**: Collapses expanded node; if already collapsed, moves to parent node.
+
+#### Example
+```cpp
+auto tree = std::make_shared<arin::TreeView>(arin::Rect{20.0f, 40.0f, 280.0f, 500.0f});
+
+auto root = tree->add_root("Project Workspace", "assets/icons/folder.svg");
+auto src = root->add_child("src", "assets/icons/folder.svg");
+src->add_child("main.cpp", "assets/icons/file-code.svg");
+src->add_child("app.cpp", "assets/icons/file-code.svg");
+
+auto inc = root->add_child("include", "assets/icons/folder.svg");
+inc->add_child("app.hpp", "assets/icons/file-code.svg");
+
+root->is_expanded = true;
+src->is_expanded = true;
+
+tree->on_selection_changed([](std::shared_ptr<arin::TreeNode> node) {
+    if (node) {
+        // Handle file/folder selection
+    }
+});
+
+app.add_widget(tree);
+```
+
+---
+
+### 4.23 Multi-Column Data Grid (`arin::TableView`, `arin::TableColumn`, `arin::TableRow`)
+
+```cpp
+#include <arin/table_view.hpp>
+```
+
+A high-performance tabular data grid featuring resizable column headers, alternating row colors, row selection, smooth vertical scrolling, and mouse double-click action support.
+
+#### Column & Row Management
+- `size_t add_column(std::string title, float width = 120.0f)`: Appends a column with initial pixel width.
+- `void set_column_width(size_t index, float width)`: Sets width of column.
+- `float column_width(size_t index) const`: Gets column width.
+- `const std::string& column_title(size_t index) const`: Gets column header title.
+- `size_t column_count() const noexcept`: Number of columns.
+- `size_t add_row(std::vector<std::string> cells, void* user_data = nullptr)`: Appends a row of cell strings.
+- `bool remove_row(size_t index)`: Removes row at index.
+- `void set_cell(size_t row, size_t col, std::string value)`: Updates cell value.
+- `const std::string& get_cell(size_t row, size_t col) const`: Reads cell value.
+- `size_t row_count() const noexcept`: Number of rows.
+- `void clear_rows() noexcept`: Clears all data rows.
+
+#### Selection & Scrolling
+- `int selected_row() const noexcept`: Current selected row index or `-1`.
+- `void select_row(int index)`: Selects row at index.
+- `void clear_selection() noexcept`: Clears row selection.
+- `float scroll_y() const noexcept`: Current vertical scroll position.
+- `void set_scroll_y(float offset) noexcept`: Sets vertical scroll position.
+
+#### Callbacks
+- `void on_row_selected(std::function<void(int row_index)> cb)`: Triggered when user selects a row.
+- `void on_row_double_clicked(std::function<void(int row_index)> cb)`: Triggered on row double-click.
+
+#### Example
+```cpp
+auto table = std::make_shared<arin::TableView>(arin::Rect{20.0f, 40.0f, 540.0f, 320.0f});
+
+table->add_column("Process Name", 220.0f);
+table->add_column("PID", 80.0f);
+table->add_column("Memory (MB)", 120.0f);
+table->add_column("Status", 100.0f);
+
+table->add_row({"systemd", "1", "14.2", "Running"});
+table->add_row({"wayland-compositor", "812", "128.6", "Running"});
+table->add_row({"terminal", "1044", "45.1", "Sleeping"});
+
+table->on_row_double_clicked([table](int row) {
+    std::string proc = table->get_cell(row, 0);
+    // Inspect process
+});
+
+app.add_widget(table);
+```
+
+---
+
+### 4.24 Native File Dialog Modal (`arin::FileDialog`, `arin::FileDialogMode`)
+
+```cpp
+#include <arin/file_dialog.hpp>
+```
+
+A complete desktop file dialog modal window. Renders a native modal window with directory breadcrumb input, "Up" navigation button, detailed multi-column file list table (`Name`, `Size`, `Type`), filename text input, file extension filter support, and Open/Save/Cancel actions.
+
+#### Modes (`arin::FileDialogMode`)
+- `FileDialogMode::OpenFile`: Select an existing file to open.
+- `FileDialogMode::SaveFile`: Select or enter a file path to save.
+- `FileDialogMode::SelectFolder`: Browse and select a directory folder.
+
+#### Constructors & Lifecycle
+- `explicit FileDialog(FileDialogMode mode = FileDialogMode::OpenFile)`
+- `FileDialog(const Rect& bounds, FileDialogMode mode = FileDialogMode::OpenFile)`
+- `void show()`: Opens and focuses modal dialog.
+- `void hide() noexcept`: Closes modal dialog.
+- `bool is_open() const noexcept`: Checks if modal is active.
+
+#### Configuration & Path Query
+- `void set_mode(FileDialogMode mode) noexcept`: Changes modal mode.
+- `FileDialogMode mode() const noexcept`: Gets current mode.
+- `void set_title(std::string title)`: Sets dialog titlebar caption.
+- `const std::string& title() const noexcept`: Gets dialog title.
+- `void set_directory(const std::string& path)`: Navigates to directory path and reloads file listing.
+- `const std::string& current_directory() const noexcept`: Current directory path.
+- `void set_filename(const std::string& filename)`: Sets current filename in input field.
+- `std::string selected_path() const`: Resolves full absolute selected path (`directory / filename`).
+- `void set_extension_filter(std::string extensions)`: Filter file extensions (e.g. `".png,.jpg,.svg"` or `".cpp,.hpp"`).
+- `const std::string& extension_filter() const noexcept`: Active extension filter.
+
+#### Callbacks
+- `void on_accept(std::function<void(const std::string& selected_path)> cb)`: Fired when user clicks Open/Save or presses Enter with a valid selection.
+- `void on_cancel(std::function<void()> cb)`: Fired when user clicks Cancel or presses Escape.
+
+#### Example
+```cpp
+auto file_dlg = std::make_shared<arin::FileDialog>(arin::FileDialogMode::OpenFile);
+file_dlg->set_directory("/home/user/Documents");
+file_dlg->set_extension_filter(".txt,.md,.cpp");
+
+file_dlg->on_accept([](const std::string& chosen_path) {
+    // Open chosen_path
+});
+
+file_dlg->on_cancel([]() {
+    // User cancelled dialog
+});
+
+// Show dialog
+file_dlg->show();
+app.add_widget(file_dlg);
+```
+
+---
+
 ## 5. Building, Running, and Testing
 
 ### Prerequisites

@@ -44,6 +44,11 @@ set(ARIN_SOURCES
     src/list_box.cpp
     src/layout.cpp
     src/context_menu.cpp
+    src/menu_bar.cpp
+    src/tab_view.cpp
+    src/tree_view.cpp
+    src/table_view.cpp
+    src/file_dialog.cpp
     src/window.cpp
     src/app.cpp
 )

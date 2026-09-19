@@ -55,6 +55,11 @@
 #include "list_box.hpp"
 #include "layout.hpp"
 #include "context_menu.hpp"
+#include "menu_bar.hpp"
+#include "tab_view.hpp"
+#include "tree_view.hpp"
+#include "table_view.hpp"
+#include "file_dialog.hpp"
 #include "window.hpp"
 #include "app.hpp"
 

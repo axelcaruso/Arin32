@@ -13,6 +13,11 @@ set(TEST_SOURCES
     test_context_menu.cpp
     test_geometry.cpp
     test_svg.cpp
+    test_menu_bar.cpp
+    test_tab_view.cpp
+    test_tree_view.cpp
+    test_table_view.cpp
+    test_file_dialog.cpp
 )
 
 # Static library test target
