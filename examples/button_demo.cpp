@@ -65,10 +65,13 @@ struct PlayerStats {
 
 int main(int argc, char** argv) {
     std::string screenshot_path;
+    bool screenshot_context_menu = false;
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--screenshot" && i + 1 < argc) {
             screenshot_path = argv[++i];
+        } else if (arg == "--show-menu") {
+            screenshot_context_menu = true;
         }
     }
 
@@ -80,7 +83,7 @@ int main(int argc, char** argv) {
     // Modern neutral slate grey canvas
     app.theme().background_color = arin::Color::from_hex(0xECEFF1);
 
-    std::string global_status = "Status: Ready. Interact with text input, checkbox, lists, layouts, or buttons.";
+    std::string global_status = "Status: Ready. Right-click anywhere for Context Menu; interact with inputs or layouts.";
     int action_counter = 0;
 
     // -------------------------------------------------------------------------
@@ -125,9 +128,11 @@ int main(int argc, char** argv) {
         std::cout << "[Arin32 Event] Cloud CheckBox toggled: " << (checked ? "ON" : "OFF") << "\n";
     });
 
-    // Center HBox inside dialog footer (Save 85px + 10px + Don't Save 100px + 10px + Cancel 85px = 290px)
-    const float dialog_actions_x = dialog_x + (dialog_w - 290.0f) * 0.5f;
-    auto dialog_actions = app.add_hbox(dialog_actions_x, footer_y + 16.0f, 10.0f);
+    // Automatic centered HBox spanning the dialog footer without hardcoded offsets
+    auto dialog_actions = app.add_hbox(dialog_x, footer_y + 16.0f, 10.0f);
+    dialog_actions->set_size(dialog_w, 32.0f);
+    dialog_actions->set_padding(arin::Padding(20.0f, 0.0f));
+    dialog_actions->set_justify(arin::LayoutJustify::Center);
 
     auto save_btn = dialog_actions->add_button("Save", 85.0f, 32.0f);
     save_btn->set_style(arin::ButtonStyle::primary());
@@ -167,8 +172,11 @@ int main(int argc, char** argv) {
     auto det_bar = app.add_progress_bar(pb_x, 320.0f, pb_w, pb_h, 68.0f, 0.0f, 100.0f);
     det_bar->set_style(arin::ProgressBarStyle::green());
 
-    // Controls for Determinate Bar using an HBox layout
-    auto pb_controls = app.add_hbox(pb_x, 348.0f, 8.0f);
+    // Controls for Determinate Bar using an HBox layout with SpaceBetween justification
+    auto pb_controls = app.add_hbox(pb_x, 348.0f, 10.0f);
+    pb_controls->set_size(pb_w, 28.0f);
+    pb_controls->set_justify(arin::LayoutJustify::SpaceBetween);
+    pb_controls->set_validation_logging(true);
 
     auto dec_btn = pb_controls->add_button("- 10%", 70.0f, 28.0f);
     dec_btn->set_style(arin::ButtonStyle::secondary());
@@ -184,7 +192,7 @@ int main(int argc, char** argv) {
         global_status = "Progress: " + std::to_string(static_cast<int>(det_bar->percentage() * 100.0f)) + "%";
     });
 
-    // Auto-sized buttons with plenty of clearance so Green Style and Blue Style never touch
+    // Auto-spaced buttons with SpaceBetween so Green Style and Blue Style never touch
     auto green_btn = pb_controls->add_button("Green Style", 100.0f, 28.0f);
     green_btn->set_style(arin::ButtonStyle::secondary());
 
@@ -212,6 +220,8 @@ int main(int argc, char** argv) {
     });
 
     auto indet_controls = app.add_hbox(pb_x, 433.0f, 8.0f);
+    indet_controls->set_size(pb_w, 28.0f);
+    indet_controls->set_validation_logging(true);
     auto toggle_indet_btn = indet_controls->add_button("Toggle Indeterminate", 155.0f, 28.0f);
     toggle_indet_btn->set_style(arin::ButtonStyle::secondary());
     toggle_indet_btn->on_click([&]() {
@@ -300,46 +310,55 @@ int main(int argc, char** argv) {
     });
 
     // -------------------------------------------------------------------------
-    // 6. Action Buttons Palette (Clean, No Forced Icons, Symmetrical Padding)
-    //    Card width: 440px. 4 buttons @ 94px + 3 gaps @ 10px = 406px.
-    //    Symmetrical margins: (440 - 406) / 2 = 17px left & right.
+    // 6. Action Buttons Palette (Clean, Un-hardcoded, Symmetrical Layouts)
+    //    Card width: 440px. Symmetrical 16px padding on left and right.
     // -------------------------------------------------------------------------
     const float bottom_y = 485.0f;
-    const float palette_x = 40.0f + 17.0f; // 57.0f (exact 17px card padding)
-    const float palette_btn_w = 94.0f;
+    const float palette_card_w = 440.0f;
+    const float palette_x = 40.0f + 16.0f; // 56.0f (exact 16px card padding)
 
     // Row 1 of Palette: Primary, Secondary, Success, Danger
-    auto palette_row1 = app.add_hbox(palette_x, bottom_y + 28.0f, 10.0f);
+    // Uses distribute_children_equally() to dynamically compute button widths
+    auto palette_row1 = app.add_hbox(40.0f, bottom_y + 28.0f, 10.0f);
+    palette_row1->set_size(palette_card_w, 32.0f);
+    palette_row1->set_padding(arin::Padding(16.0f, 0.0f));
 
-    auto prim_b = palette_row1->add_button("Primary", palette_btn_w, 32.0f);
+    auto prim_b = palette_row1->add_button("Primary", 0.0f, 32.0f);
     prim_b->set_style(arin::ButtonStyle::primary());
     prim_b->on_click([&]() { global_status = "Palette: Primary button clicked"; });
 
-    auto sec_b = palette_row1->add_button("Secondary", palette_btn_w, 32.0f);
+    auto sec_b = palette_row1->add_button("Secondary", 0.0f, 32.0f);
     sec_b->set_style(arin::ButtonStyle::secondary());
     sec_b->on_click([&]() { global_status = "Palette: Secondary button clicked"; });
 
-    auto succ_b = palette_row1->add_button("Success", palette_btn_w, 32.0f);
+    auto succ_b = palette_row1->add_button("Success", 0.0f, 32.0f);
     succ_b->set_style(arin::ButtonStyle::success());
     succ_b->on_click([&]() { global_status = "Palette: Success button clicked"; });
 
-    auto dang_b = palette_row1->add_button("Danger", palette_btn_w, 32.0f);
+    auto dang_b = palette_row1->add_button("Danger", 0.0f, 32.0f);
     dang_b->set_style(arin::ButtonStyle::danger());
     dang_b->on_click([&]() { global_status = "Palette: Danger button clicked"; });
 
+    palette_row1->distribute_children_equally();
     palette_row1->update_layout();
+    palette_row1->set_validation_logging(true);
 
     // Row 2 of Palette: Outline, Disabled, Exit Demo
-    auto palette_row2 = app.add_hbox(palette_x, bottom_y + 70.0f, 10.0f);
+    // Matches row 1 button dimensions and centers them symmetrically in the card
+    auto palette_row2 = app.add_hbox(40.0f, bottom_y + 70.0f, 10.0f);
+    palette_row2->set_size(palette_card_w, 32.0f);
+    palette_row2->set_padding(arin::Padding(16.0f, 0.0f));
+    palette_row2->set_justify(arin::LayoutJustify::Center);
 
-    auto outl_b = palette_row2->add_button("Outline", palette_btn_w, 32.0f);
+    float row2_btn_w = prim_b->bounds().width;
+    auto outl_b = palette_row2->add_button("Outline", row2_btn_w, 32.0f);
     outl_b->set_style(arin::ButtonStyle::outline(arin::Color::from_hex(0x0067C0)));
     outl_b->on_click([&]() { global_status = "Palette: Outline button clicked"; });
 
-    auto dis_b = palette_row2->add_button("Disabled", palette_btn_w, 32.0f);
+    auto dis_b = palette_row2->add_button("Disabled", row2_btn_w, 32.0f);
     dis_b->set_style(arin::ButtonStyle::secondary()).set_enabled(false);
 
-    auto exit_b = palette_row2->add_button("Exit Demo", palette_btn_w, 32.0f);
+    auto exit_b = palette_row2->add_button("Exit Demo", row2_btn_w, 32.0f);
     exit_b->set_style(arin::ButtonStyle::secondary());
     exit_b->on_click([&]() {
         std::cout << "[Arin32 Event] Closing demo.\n";
@@ -347,6 +366,7 @@ int main(int argc, char** argv) {
     });
 
     palette_row2->update_layout();
+    palette_row2->set_validation_logging(true);
 
     // -------------------------------------------------------------------------
     // 7. Dedicated Vector Icons & Graphics Showcase (Right Column Bottom)
@@ -366,6 +386,72 @@ int main(int argc, char** argv) {
         arin::ImageScaleMode::Fit
     );
     sample_img->set_corner_radius(5.0f);
+
+    // -------------------------------------------------------------------------
+    // 8. Desktop Context Menu & Layout Validation System
+    // -------------------------------------------------------------------------
+    std::vector<std::shared_ptr<arin::Layout>> demo_layouts = {
+        dialog_actions, pb_controls, indet_controls, palette_row1, palette_row2
+    };
+
+    auto run_layout_inspection = [&]() {
+        bool all_valid = true;
+        int total_issues = 0;
+        std::cout << "\n================ [Arin32 Layout Inspector] ================\n";
+        for (size_t i = 0; i < demo_layouts.size(); ++i) {
+            auto res = demo_layouts[i]->validate();
+            std::cout << "Container #" << (i + 1) << " bounds: ("
+                      << demo_layouts[i]->bounds().x << ", " << demo_layouts[i]->bounds().y << ", "
+                      << demo_layouts[i]->bounds().width << "x" << demo_layouts[i]->bounds().height
+                      << ") -> " << (res.is_valid ? "[VALID]" : "[HAS ISSUES]") << "\n";
+            if (!res.is_valid) {
+                all_valid = false;
+                for (const auto& issue : res.issues) {
+                    std::cout << "  * " << issue.message << "\n";
+                    total_issues++;
+                }
+            }
+        }
+        std::cout << "Summary: " << (all_valid ? "All layouts pass validation! 0 overlaps, 0 overflows."
+                                               : std::to_string(total_issues) + " layout issue(s) detected.") << "\n";
+        std::cout << "============================================================\n\n";
+        global_status = all_valid ? "Layout Inspector: All containers PASS validation (0 overlaps, 0 overflows)."
+                                  : "Layout Inspector Warning: " + std::to_string(total_issues) + " issue(s) found!";
+    };
+
+    // Run layout validation report once on startup
+    run_layout_inspection();
+
+    // Create desktop floating context menu with icons, shortcuts, and actions
+    auto ctx_menu = app.create_context_menu();
+    ctx_menu->add_item("Undo", arin::IconType::None, "Ctrl+Z", [&]() {
+        global_status = "Context Menu: Undo action triggered";
+    });
+    ctx_menu->add_item("Redo", arin::IconType::None, "Ctrl+Y", [&]() {
+        global_status = "Context Menu: Redo action triggered";
+    });
+    ctx_menu->add_separator();
+    ctx_menu->add_item("Cut", arin::IconType::Cut, "Ctrl+X", [&]() {
+        global_status = "Context Menu: Cut action triggered";
+    });
+    ctx_menu->add_item("Copy", arin::IconType::Copy, "Ctrl+C", [&]() {
+        global_status = "Context Menu: Copy action triggered";
+    });
+    ctx_menu->add_item("Paste", arin::IconType::Paste, "Ctrl+V", [&]() {
+        global_status = "Context Menu: Paste action triggered";
+    });
+    ctx_menu->add_separator();
+    ctx_menu->add_item("Select All", arin::IconType::None, "Ctrl+A", [&]() {
+        global_status = "Context Menu: Select All triggered";
+    });
+    ctx_menu->add_item("Inspect Layouts", arin::IconType::Check, [&]() {
+        run_layout_inspection();
+    });
+    ctx_menu->add_item("Reset Status", arin::IconType::Settings, [&]() {
+        global_status = "Status: Ready. Right click anywhere for Context Menu; interact with inputs or layouts.";
+    });
+
+    app.set_default_context_menu(ctx_menu);
 
     // -------------------------------------------------------------------------
     // 8. Custom Frame Callback: Cards, Shadows, Labels, and Visual Styling
@@ -528,14 +614,14 @@ int main(int argc, char** argv) {
         );
 
         r.draw_text(
-            "Action Buttons Palette (Clean, No Forced Icons):",
+            "Action Buttons Palette (Auto-Layout, Symmetrical Spacing):",
             arin::Vec2(palette_x, bottom_y + 8.0f),
             arin::Color::from_hex(0x111827),
             0.92f
         );
 
         r.draw_text(
-            "Status: Standard button styles for dialogs, forms, and toolbars",
+            "Validated layout: dynamic widths & symmetrical alignment",
             arin::Vec2(palette_x, bottom_y + 112.0f),
             arin::Color::from_hex(0x6B7280),
             0.82f
@@ -677,7 +763,12 @@ int main(int argc, char** argv) {
             det_bar->set_anim_phase(0.40f);
             indet_bar->set_anim_phase(0.45f);
 
-            if (captured_frames >= 3) {
+            if (screenshot_context_menu && captured_frames == 2) {
+                app.show_context_menu(ctx_menu, 220.0f, 150.0f);
+            }
+
+            int target_frame = screenshot_context_menu ? 4 : 3;
+            if (captured_frames >= target_frame) {
                 save_screenshot_ppm(screenshot_path, r.viewport_width(), r.viewport_height());
                 std::cout << "[Arin32] Frame rendered! Screenshot saved to " << screenshot_path << std::endl;
                 app.close();

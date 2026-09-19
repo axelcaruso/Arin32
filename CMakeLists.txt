@@ -39,6 +39,7 @@ add_library(arin32
     src/progress_bar.cpp
     src/list_box.cpp
     src/layout.cpp
+    src/context_menu.cpp
     src/window.cpp
     src/app.cpp
 )

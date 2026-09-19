@@ -52,6 +52,7 @@
 #include "progress_bar.hpp"
 #include "list_box.hpp"
 #include "layout.hpp"
+#include "context_menu.hpp"
 #include "window.hpp"
 #include "app.hpp"
 

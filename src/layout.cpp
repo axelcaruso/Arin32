@@ -28,6 +28,7 @@
 
 #include "arin/layout.hpp"
 #include <algorithm>
+#include <iostream>
 
 namespace arin {
 
@@ -99,6 +100,39 @@ Layout& Layout::set_alignment(LayoutAlignment alignment) {
 Layout& Layout::set_auto_size(bool auto_size) {
     m_auto_size = auto_size;
     m_needs_layout = true;
+    return *this;
+}
+
+Layout& Layout::set_justify(LayoutJustify justify) {
+    m_justify = justify;
+    m_needs_layout = true;
+    return *this;
+}
+
+Layout& Layout::set_validation_logging(bool enable) {
+    m_validation_logging = enable;
+    return *this;
+}
+
+Layout& Layout::distribute_children_equally() {
+    if (m_children.empty() || m_auto_size) return *this;
+    size_t n = m_children.size();
+    if (m_orientation == LayoutOrientation::Horizontal) {
+        float avail = m_bounds.width - m_padding.left - m_padding.right;
+        float total_spacing = (n > 1) ? (n - 1) * m_spacing : 0.0f;
+        float equal_w = std::max(0.0f, (avail - total_spacing) / static_cast<float>(n));
+        for (auto& child : m_children) {
+            child->set_size(equal_w, child->bounds().height);
+        }
+    } else {
+        float avail = m_bounds.height - m_padding.top - m_padding.bottom;
+        float total_spacing = (n > 1) ? (n - 1) * m_spacing : 0.0f;
+        float equal_h = std::max(0.0f, (avail - total_spacing) / static_cast<float>(n));
+        for (auto& child : m_children) {
+            child->set_size(child->bounds().width, equal_h);
+        }
+    }
+    update_layout();
     return *this;
 }
 
@@ -180,6 +214,47 @@ void Layout::update_layout() {
         }
 
         float cursor_y = start_y;
+        float step_gap = m_spacing;
+        size_t n = m_children.size();
+        if (!m_auto_size && m_bounds.height > (m_padding.top + m_padding.bottom) && n > 0) {
+            float avail_h = m_bounds.height - m_padding.top - m_padding.bottom;
+            float total_child_h = 0.0f;
+            for (const auto& child : m_children) {
+                total_child_h += child->bounds().height;
+            }
+            float free_space = avail_h - total_child_h;
+            switch (m_justify) {
+                case LayoutJustify::Start:
+                    cursor_y = start_y;
+                    step_gap = m_spacing;
+                    break;
+                case LayoutJustify::Center: {
+                    float total_with_spacing = total_child_h + (n > 1 ? (n - 1) * m_spacing : 0.0f);
+                    cursor_y = start_y + std::max(0.0f, (avail_h - total_with_spacing) * 0.5f);
+                    step_gap = m_spacing;
+                    break;
+                }
+                case LayoutJustify::End: {
+                    float total_with_spacing = total_child_h + (n > 1 ? (n - 1) * m_spacing : 0.0f);
+                    cursor_y = start_y + std::max(0.0f, avail_h - total_with_spacing);
+                    step_gap = m_spacing;
+                    break;
+                }
+                case LayoutJustify::SpaceBetween:
+                    cursor_y = start_y;
+                    step_gap = (n > 1 && free_space > 0.0f) ? (free_space / static_cast<float>(n - 1)) : m_spacing;
+                    break;
+                case LayoutJustify::SpaceAround:
+                    step_gap = (n > 0 && free_space > 0.0f) ? (free_space / static_cast<float>(n)) : m_spacing;
+                    cursor_y = start_y + step_gap * 0.5f;
+                    break;
+                case LayoutJustify::SpaceEvenly:
+                    step_gap = (free_space > 0.0f) ? (free_space / static_cast<float>(n + 1)) : m_spacing;
+                    cursor_y = start_y + step_gap;
+                    break;
+            }
+        }
+
         for (auto& child : m_children) {
             float cw = child->bounds().width;
             float ch = child->bounds().height;
@@ -209,13 +284,13 @@ void Layout::update_layout() {
                 ch = sub->bounds().height;
             }
 
-            cursor_y += ch + m_spacing;
+            cursor_y += ch + step_gap;
         }
 
         if (m_auto_size) {
             float total_h = m_children.empty()
                 ? 0.0f
-                : (cursor_y - start_y - m_spacing);
+                : (cursor_y - start_y - step_gap);
             m_bounds.width = content_w + m_padding.left + m_padding.right;
             m_bounds.height = total_h + m_padding.top + m_padding.bottom;
         }
@@ -232,6 +307,47 @@ void Layout::update_layout() {
         }
 
         float cursor_x = start_x;
+        float step_gap = m_spacing;
+        size_t n = m_children.size();
+        if (!m_auto_size && m_bounds.width > (m_padding.left + m_padding.right) && n > 0) {
+            float avail_w = m_bounds.width - m_padding.left - m_padding.right;
+            float total_child_w = 0.0f;
+            for (const auto& child : m_children) {
+                total_child_w += child->bounds().width;
+            }
+            float free_space = avail_w - total_child_w;
+            switch (m_justify) {
+                case LayoutJustify::Start:
+                    cursor_x = start_x;
+                    step_gap = m_spacing;
+                    break;
+                case LayoutJustify::Center: {
+                    float total_with_spacing = total_child_w + (n > 1 ? (n - 1) * m_spacing : 0.0f);
+                    cursor_x = start_x + std::max(0.0f, (avail_w - total_with_spacing) * 0.5f);
+                    step_gap = m_spacing;
+                    break;
+                }
+                case LayoutJustify::End: {
+                    float total_with_spacing = total_child_w + (n > 1 ? (n - 1) * m_spacing : 0.0f);
+                    cursor_x = start_x + std::max(0.0f, avail_w - total_with_spacing);
+                    step_gap = m_spacing;
+                    break;
+                }
+                case LayoutJustify::SpaceBetween:
+                    cursor_x = start_x;
+                    step_gap = (n > 1 && free_space > 0.0f) ? (free_space / static_cast<float>(n - 1)) : m_spacing;
+                    break;
+                case LayoutJustify::SpaceAround:
+                    step_gap = (n > 0 && free_space > 0.0f) ? (free_space / static_cast<float>(n)) : m_spacing;
+                    cursor_x = start_x + step_gap * 0.5f;
+                    break;
+                case LayoutJustify::SpaceEvenly:
+                    step_gap = (free_space > 0.0f) ? (free_space / static_cast<float>(n + 1)) : m_spacing;
+                    cursor_x = start_x + step_gap;
+                    break;
+            }
+        }
+
         for (auto& child : m_children) {
             float cw = child->bounds().width;
             float ch = child->bounds().height;
@@ -261,19 +377,81 @@ void Layout::update_layout() {
                 cw = sub->bounds().width;
             }
 
-            cursor_x += cw + m_spacing;
+            cursor_x += cw + step_gap;
         }
 
         if (m_auto_size) {
             float total_w = m_children.empty()
                 ? 0.0f
-                : (cursor_x - start_x - m_spacing);
+                : (cursor_x - start_x - step_gap);
             m_bounds.width = total_w + m_padding.left + m_padding.right;
             m_bounds.height = content_h + m_padding.top + m_padding.bottom;
         }
     }
 
     m_needs_layout = false;
+    m_last_validation = validate();
+    if (m_validation_logging && !m_last_validation.is_valid) {
+        for (const auto& issue : m_last_validation.issues) {
+            std::cerr << issue.message << "\n";
+        }
+    }
+}
+
+LayoutValidationResult Layout::validate() const {
+    LayoutValidationResult res;
+    res.is_valid = true;
+
+    // 1. Check for overlapping sibling children
+    for (size_t i = 0; i < m_children.size(); ++i) {
+        for (size_t j = i + 1; j < m_children.size(); ++j) {
+            const Rect& b1 = m_children[i]->bounds();
+            const Rect& b2 = m_children[j]->bounds();
+            if (b1.intersects(b2)) {
+                res.is_valid = false;
+                LayoutIssue issue;
+                issue.severity = LayoutIssue::Severity::Error;
+                issue.message = "[Arin32 Layout Warning] Overlap detected between child #" +
+                                std::to_string(i) + " at (" + std::to_string(b1.x) + "," + std::to_string(b1.y) +
+                                ") and child #" + std::to_string(j) + " at (" + std::to_string(b2.x) + "," +
+                                std::to_string(b2.y) + ") in layout at (" + std::to_string(m_bounds.x) + "," +
+                                std::to_string(m_bounds.y) + ")";
+                res.issues.push_back(issue);
+            }
+        }
+    }
+
+    // 2. Check for container boundary overflow
+    if (!m_auto_size && (m_bounds.width > 0.0f || m_bounds.height > 0.0f)) {
+        float max_right = m_bounds.x + m_bounds.width - m_padding.right + 0.5f;
+        float max_bottom = m_bounds.y + m_bounds.height - m_padding.bottom + 0.5f;
+
+        for (size_t i = 0; i < m_children.size(); ++i) {
+            const Rect& b = m_children[i]->bounds();
+            if (b.x + b.width > max_right) {
+                res.is_valid = false;
+                LayoutIssue issue;
+                issue.severity = LayoutIssue::Severity::Warning;
+                issue.message = "[Arin32 Layout Warning] Child #" + std::to_string(i) +
+                                " exceeds container right edge by " +
+                                std::to_string((b.x + b.width) - (m_bounds.x + m_bounds.width - m_padding.right)) +
+                                "px in layout at (" + std::to_string(m_bounds.x) + "," + std::to_string(m_bounds.y) + ")";
+                res.issues.push_back(issue);
+            }
+            if (b.y + b.height > max_bottom) {
+                res.is_valid = false;
+                LayoutIssue issue;
+                issue.severity = LayoutIssue::Severity::Warning;
+                issue.message = "[Arin32 Layout Warning] Child #" + std::to_string(i) +
+                                " exceeds container bottom edge by " +
+                                std::to_string((b.y + b.height) - (m_bounds.y + m_bounds.height - m_padding.bottom)) +
+                                "px in layout at (" + std::to_string(m_bounds.x) + "," + std::to_string(m_bounds.y) + ")";
+                res.issues.push_back(issue);
+            }
+        }
+    }
+
+    return res;
 }
 
 bool Layout::handle_mouse(const MouseEvent& ev) {

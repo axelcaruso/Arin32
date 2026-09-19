@@ -178,6 +178,16 @@ struct Rect {
         return Rect(x - amount, y - amount, width + amount * 2.0f, height + amount * 2.0f);
     }
 
+    /**
+     * @brief Checks if this rectangle intersects with another rectangle.
+     * @param other Rectangle to test against.
+     * @return true if rectangles overlap, false otherwise.
+     */
+    constexpr bool intersects(const Rect& other) const {
+        return left() < other.right() && right() > other.left() &&
+               top() < other.bottom() && bottom() > other.top();
+    }
+
     constexpr bool operator==(const Rect& rhs) const {
         return std::abs(x - rhs.x) < 1e-5f &&
                std::abs(y - rhs.y) < 1e-5f &&

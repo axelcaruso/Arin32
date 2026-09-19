@@ -45,6 +45,34 @@ App::App(const std::string& title, int width, int height)
 
     // Set up event routing to managed widgets
     m_window.on_mouse_event([this](const MouseEvent& ev) {
+        // 1. Give active context menu modal priority
+        if (m_active_context_menu && m_active_context_menu->is_visible()) {
+            if (ev.type == MouseEventType::ButtonDown) {
+                if (!m_active_context_menu->bounds().contains(ev.position)) {
+                    close_context_menu();
+                    // Fall through so click can activate target widget
+                } else {
+                    m_active_context_menu->handle_mouse(ev);
+                    return;
+                }
+            } else {
+                if (m_active_context_menu->handle_mouse(ev)) {
+                    return;
+                }
+            }
+        }
+
+        // 2. Right-click context menu trigger
+        if (ev.type == MouseEventType::ButtonDown && ev.button == MouseButton::Right) {
+            if (m_context_menu_cb) {
+                m_context_menu_cb(ev.position.x, ev.position.y);
+                return;
+            } else if (m_default_context_menu) {
+                show_context_menu(m_default_context_menu, ev.position.x, ev.position.y);
+                return;
+            }
+        }
+
         // Update focus on left mouse click
         if (ev.type == MouseEventType::ButtonDown && ev.button == MouseButton::Left) {
             std::shared_ptr<IWidget> clicked_focusable = nullptr;
@@ -88,8 +116,13 @@ App::App(const std::string& title, int width, int height)
         }
     });
 
-    // Set up keyboard key event dispatching to the focused widget
+    // Set up keyboard key event dispatching to context menu or focused widget
     m_window.on_key_event([this](const KeyEvent& ev) {
+        if (m_active_context_menu && m_active_context_menu->is_visible()) {
+            if (m_active_context_menu->handle_key(ev)) {
+                return;
+            }
+        }
         if (m_focused_widget && m_focused_widget->is_enabled() && m_focused_widget->is_visible()) {
             m_focused_widget->handle_key(ev);
         }
@@ -306,6 +339,38 @@ std::shared_ptr<TextInput> App::add_text_input(std::shared_ptr<TextInput> input)
     return input;
 }
 
+std::shared_ptr<ContextMenu> App::create_context_menu() {
+    auto menu = std::make_shared<ContextMenu>();
+    m_context_menus.push_back(menu);
+    return menu;
+}
+
+void App::show_context_menu(std::shared_ptr<ContextMenu> menu, float x, float y) {
+    if (m_active_context_menu && m_active_context_menu != menu) {
+        m_active_context_menu->hide();
+    }
+    m_active_context_menu = menu;
+    if (m_active_context_menu) {
+        Vec2 fb = m_window.framebuffer_size();
+        m_active_context_menu->show(x, y, fb.x, fb.y);
+    }
+}
+
+void App::close_context_menu() {
+    if (m_active_context_menu) {
+        m_active_context_menu->hide();
+        m_active_context_menu = nullptr;
+    }
+}
+
+void App::on_context_menu(std::function<void(float x, float y)> cb) {
+    m_context_menu_cb = std::move(cb);
+}
+
+void App::set_default_context_menu(std::shared_ptr<ContextMenu> menu) {
+    m_default_context_menu = menu;
+}
+
 void App::set_focus(std::shared_ptr<IWidget> widget) {
     if (m_focused_widget == widget) return;
 
@@ -390,15 +455,20 @@ void App::run() {
                 w->render(m_renderer);
             }
 
-            // 8. Flush drawing batches
+            // 8. Render active floating context menu on top of all widgets
+            if (m_active_context_menu && m_active_context_menu->is_visible()) {
+                m_active_context_menu->render(m_renderer);
+            }
+
+            // 9. Flush drawing batches
             m_renderer.end_frame();
 
-            // 9. Invoke optional after_frame callback (overlays / screenshots)
+            // 10. Invoke optional after_frame callback (overlays / screenshots)
             if (m_after_frame_cb) {
                 m_after_frame_cb(m_renderer);
             }
 
-            // 10. Present rendered frame to the display
+            // 11. Present rendered frame to the display
             m_window.swap_buffers();
         }
     }

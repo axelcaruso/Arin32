@@ -43,6 +43,7 @@
 #include "icon.hpp"
 #include "checkbox.hpp"
 #include "text_input.hpp"
+#include "context_menu.hpp"
 #include <memory>
 #include <vector>
 #include <functional>
@@ -266,6 +267,35 @@ public:
     std::shared_ptr<TextInput> add_text_input(std::shared_ptr<TextInput> input);
 
     /**
+     * @brief Creates and registers a floating context menu managed by the application.
+     * @return Shared pointer to the created ContextMenu.
+     */
+    std::shared_ptr<ContextMenu> create_context_menu();
+
+    /**
+     * @brief Displays an active context menu at (x, y).
+     */
+    void show_context_menu(std::shared_ptr<ContextMenu> menu, float x, float y);
+
+    /**
+     * @brief Dismisses any currently visible context menu.
+     */
+    void close_context_menu();
+
+    /// @brief Gets the currently active context menu, or nullptr if none is open.
+    std::shared_ptr<ContextMenu> active_context_menu() const { return m_active_context_menu; }
+
+    /**
+     * @brief Registers a callback invoked on right click with cursor position (x, y).
+     */
+    void on_context_menu(std::function<void(float x, float y)> cb);
+
+    /**
+     * @brief Configures a default context menu automatically opened on right clicks.
+     */
+    void set_default_context_menu(std::shared_ptr<ContextMenu> menu);
+
+    /**
      * @brief Sets keyboard focus to a specific widget.
      */
     void set_focus(std::shared_ptr<IWidget> widget);
@@ -318,6 +348,10 @@ private:
     Theme m_theme{Theme::dark()};
     std::vector<std::shared_ptr<IWidget>> m_widgets;
     std::shared_ptr<IWidget> m_focused_widget{nullptr};
+    std::shared_ptr<ContextMenu> m_active_context_menu{nullptr};
+    std::shared_ptr<ContextMenu> m_default_context_menu{nullptr};
+    std::vector<std::shared_ptr<ContextMenu>> m_context_menus;
+    std::function<void(float x, float y)> m_context_menu_cb;
     FrameCallback m_custom_frame_cb;
     FrameCallback m_after_frame_cb;
     bool m_running{true};

@@ -166,3 +166,78 @@ TEST(ArinLayoutTest, MouseRoutingInLayout) {
 
     EXPECT_TRUE(clicked);
 }
+
+TEST(ArinLayoutTest, LayoutJustifyCenter) {
+    HBox hbox(Rect(0.0f, 0.0f, 300.0f, 50.0f), 10.0f);
+    hbox.set_padding(0.0f);
+    hbox.set_justify(LayoutJustify::Center);
+
+    auto b1 = hbox.add_button("A", 80.0f, 30.0f);
+    auto b2 = hbox.add_button("B", 80.0f, 30.0f);
+    hbox.update_layout();
+
+    // Total content = 80 + 10 + 80 = 170. Free = 300 - 170 = 130. Offset = 65.
+    EXPECT_FLOAT_EQ(b1->bounds().x, 65.0f);
+    EXPECT_FLOAT_EQ(b2->bounds().x, 65.0f + 80.0f + 10.0f);
+}
+
+TEST(ArinLayoutTest, LayoutJustifySpaceBetween) {
+    HBox hbox(Rect(100.0f, 0.0f, 300.0f, 50.0f));
+    hbox.set_padding(0.0f);
+    hbox.set_justify(LayoutJustify::SpaceBetween);
+
+    auto b1 = hbox.add_button("A", 50.0f, 30.0f);
+    auto b2 = hbox.add_button("B", 50.0f, 30.0f);
+    auto b3 = hbox.add_button("C", 50.0f, 30.0f);
+    hbox.update_layout();
+
+    // Total child width = 150. Free space = 300 - 150 = 150. Gaps = 150 / 2 = 75.
+    EXPECT_FLOAT_EQ(b1->bounds().x, 100.0f);
+    EXPECT_FLOAT_EQ(b2->bounds().x, 100.0f + 50.0f + 75.0f);
+    EXPECT_FLOAT_EQ(b3->bounds().x, 100.0f + 300.0f - 50.0f);
+}
+
+TEST(ArinLayoutTest, LayoutJustifySpaceEvenly) {
+    HBox hbox(Rect(0.0f, 0.0f, 240.0f, 50.0f));
+    hbox.set_padding(0.0f);
+    hbox.set_justify(LayoutJustify::SpaceEvenly);
+
+    auto b1 = hbox.add_button("A", 60.0f, 30.0f);
+    auto b2 = hbox.add_button("B", 60.0f, 30.0f);
+    hbox.update_layout();
+
+    // 2 children of 60 = 120. Free space = 240 - 120 = 120. Gaps = 120 / 3 = 40.
+    EXPECT_FLOAT_EQ(b1->bounds().x, 40.0f);
+    EXPECT_FLOAT_EQ(b2->bounds().x, 40.0f + 60.0f + 40.0f);
+}
+
+TEST(ArinLayoutTest, DistributeChildrenEqually) {
+    HBox hbox(Rect(0.0f, 0.0f, 300.0f, 40.0f), 10.0f);
+    hbox.set_padding(Padding(10.0f)); // left 10, right 10 -> available 280
+
+    auto b1 = hbox.add_button("A", 10.0f, 30.0f);
+    auto b2 = hbox.add_button("B", 10.0f, 30.0f);
+    auto b3 = hbox.add_button("C", 10.0f, 30.0f);
+
+    // Available 280, 2 gaps of 10 = 20. Total width for 3 buttons = 260. 260 / 3 = 86.6667
+    hbox.distribute_children_equally();
+
+    float expected_w = 260.0f / 3.0f;
+    EXPECT_NEAR(b1->bounds().width, expected_w, 0.01f);
+    EXPECT_NEAR(b2->bounds().width, expected_w, 0.01f);
+    EXPECT_NEAR(b3->bounds().width, expected_w, 0.01f);
+}
+
+TEST(ArinLayoutTest, LayoutValidationDetectsOverlapAndOverflow) {
+    HBox hbox(Rect(0.0f, 0.0f, 100.0f, 40.0f));
+    hbox.set_padding(0.0f);
+
+    auto b1 = hbox.add_button("Button 1", 60.0f, 30.0f);
+    auto b2 = hbox.add_button("Button 2", 60.0f, 30.0f);
+    hbox.update_layout();
+
+    // Total width = 120 > container 100 -> overflow detected
+    LayoutValidationResult res = hbox.validate();
+    EXPECT_FALSE(res.is_valid);
+    EXPECT_GT(res.issues.size(), 0u);
+}

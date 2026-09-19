@@ -18,16 +18,17 @@ Welcome to the official developer documentation for **Arin32**, a lightweight, h
    - [4.6 `arin::ProgressBar` & `arin::ProgressBarMode`](#46-arinprogressbar--arinprogressbarmode)
    - [4.7 `arin::ProgressBarStyle`](#47-arinprogressbarstyle)
    - [4.8 `arin::IWidget` (Polymorphic Widget Base)](#48-ariniwidget-polymorphic-widget-base)
-   - [4.9 Automatic Layout Containers (`arin::Layout`, `arin::VBox`, `arin::HBox`)](#49-automatic-layout-containers-arinlayout-arinvbox-arinhbox)
+   - [4.9 Automatic Layout Containers (`arin::Layout`, `arin::VBox`, `arin::HBox`, `arin::LayoutJustify`)](#49-automatic-layout-containers-arinlayout-arinvbox-arinhbox-arinlayoutjustify)
    - [4.10 List Box Widgets (`arin::ListBox`, `arin::CheckListBox`, `arin::ListBoxMode`, `arin::ListBoxStyle`)](#410-list-box-widgets-arinlistbox-arinchecklistbox-arinlistboxmode-arinlistboxstyle)
    - [4.11 Image & Texture Support (`arin::Texture`, `arin::Image`, `arin::TextureFilter`, `arin::ImageScaleMode`)](#411-image--texture-support-arintexture-arinimage-arintexturefilter-arinimagescalemode)
    - [4.12 Vector Icons (`arin::Icon`, `arin::IconType`)](#412-vector-icons-arinicon-arinicontype)
-   - [4.13 `arin::Theme`](#413-arintheme)
-   - [4.14 `arin::Renderer2D`](#414-arinrenderer2d)
-   - [4.15 `arin::Font`](#415-arinfont)
-   - [4.16 `arin::Window` & `arin::IPlatformBackend`](#416-arinwindow--ariniplatformbackend)
-   - [4.17 Geometric & Color Types (`Vec2`, `Rect`, `Color`, `Padding`)](#417-geometric--color-types)
-   - [4.18 Input System (`InputState`, `MouseEvent`, `KeyEvent`, `TextEvent`, `KeyCode`, `KeyModifier`)](#418-input-system)
+   - [4.13 Context Menu System (`arin::ContextMenu`, `arin::MenuItem`, `arin::ContextMenuStyle`)](#413-context-menu-system-arincontextmenu-arinmenuitem-arincontextmenustyle)
+   - [4.14 `arin::Theme`](#414-arintheme)
+   - [4.15 `arin::Renderer2D`](#415-arinrenderer2d)
+   - [4.16 `arin::Font`](#416-arinfont)
+   - [4.17 `arin::Window` & `arin::IPlatformBackend`](#417-arinwindow--ariniplatformbackend)
+   - [4.18 Geometric & Color Types (`Vec2`, `Rect`, `Color`, `Padding`)](#418-geometric--color-types)
+   - [4.19 Input System (`InputState`, `MouseEvent`, `KeyEvent`, `TextEvent`, `KeyCode`, `KeyModifier`)](#419-input-system)
 5. [Building, Running, and Testing](#5.building-running-and-testing)
    - [Linux Build](#linux-build)
    - [FreeBSD Build](#freebsd-build)
@@ -324,7 +325,7 @@ Defines colors, borders, and dimensions across all button states.
 
 ### 4.4 `arin::CheckBox` & `arin::CheckBoxStyle`
 
-A standalone, fully interactive two-state checkbox widget featuring crisp GPU-drawn checkmarks (`✓`), fluid hover animations, automatic content measurement, and seamless integration with layouts.
+A standalone, fully interactive two-state checkbox widget featuring crisp GPU-drawn vector check marks, fluid hover animations, automatic content measurement, and seamless integration with layouts.
 
 ```cpp
 #include <arin/checkbox.hpp>
@@ -503,17 +504,18 @@ Base interface for all UI elements in Arin32 (`Button`, `CheckBox`, `TextInput`,
 
 ---
 
-### 4.9 Automatic Layout Containers (`arin::Layout`, `arin::VBox`, `arin::HBox`)
+### 4.9 Automatic Layout Containers (`arin::Layout`, `arin::VBox`, `arin::HBox`, `arin::LayoutJustify`)
 
-Eliminates manual pixel coordinate calculations by automatically arranging child widgets linearly with customizable spacing, padding, and cross-axis alignment. Reaches Flutter- and Qt-level ergonomics.
+Eliminates manual pixel coordinate calculations by automatically arranging child widgets linearly with customizable spacing, padding, cross-axis alignment, main-axis justification, equal distribution, and container boundary validation. Reaches Flutter- and Qt-level ergonomics.
 
 ```cpp
 #include <arin/layout.hpp>
 ```
 
-#### Layout Orientations & Alignments
+#### Layout Orientations, Alignments & Justification
 - `enum class LayoutOrientation : uint8_t { Vertical, Horizontal };`
 - `enum class LayoutAlignment : uint8_t { Start, Center, End, Stretch };`
+- `enum class LayoutJustify : uint8_t { Start, Center, End, SpaceBetween, SpaceAround, SpaceEvenly };`
 
 #### Container Classes
 - **`arin::Layout`**: General linear layout container.
@@ -524,7 +526,16 @@ Eliminates manual pixel coordinate calculations by automatically arranging child
 - `set_spacing(float spacing)`: Sets pixel gap between adjacent child widgets.
 - `set_padding(const Padding& padding)` / `set_padding(float uniform)`: Sets inner padding offsets.
 - `set_alignment(LayoutAlignment alignment)`: Configures cross-axis alignment (`Start`, `Center`, `End`, `Stretch`).
+- `set_justify(LayoutJustify justify)`: Configures main-axis distribution (`Start`, `Center`, `End`, `SpaceBetween`, `SpaceAround`, `SpaceEvenly`).
 - `set_auto_size(bool enable)`: Automatically resizes layout bounding box to wrap its children (default: true).
+- `distribute_children_equally()`: Automatically resizes all children along the main axis to uniformly share available space within a fixed container size.
+- `set_validation_logging(bool enable)`: Enables automatic console error/warning logging whenever a layout collision or boundary overflow occurs during layout updates.
+
+#### Layout Validation & Diagnostics
+- `LayoutValidationResult validate() const`: Analyzes the container and children geometry to ensure zero overlaps between sibling widgets and zero overflow beyond container boundaries.
+- `const LayoutValidationResult& last_validation_result() const`: Returns the result from the most recent validation pass.
+- `struct LayoutIssue`: Contains severity (`Warning`, `Error`) and descriptive diagnostics.
+- `struct LayoutValidationResult`: Holds `bool is_valid`, `has_errors()`, and vector of `LayoutIssue` diagnostics.
 
 #### Child Management
 - `add_widget(std::shared_ptr<IWidget> widget)`: Appends an existing polymorphic widget.
@@ -535,7 +546,7 @@ Eliminates manual pixel coordinate calculations by automatically arranging child
 - `add_vbox(float spacing = 8.0f)` / `add_hbox(float spacing = 8.0f)`: Appends a nested layout container (supports arbitrary recursion).
 - `add_spacer(float size)`: Inserts a fixed empty space along the layout axis.
 - `clear()`: Removes all managed children.
-- `update_layout()`: Recalculates all child positions and sizes. Automatically called before rendering and input dispatching.
+- `update_layout()`: Recalculates all child positions and sizes, and runs validation if logging is enabled. Automatically called before rendering and input dispatching.
 
 ---
 
@@ -549,7 +560,7 @@ High-performance, scrollable single-selection and checkbox lists designed after 
 
 #### Operating Modes
 - `ListBoxMode::Standard`: Single-item selection with Accent Blue (`#0067C0`) background highlight and white typography.
-- `ListBoxMode::CheckBox`: Check box list where each row contains an independent, interactive checkbox with crisp checkmark (`✓`).
+- `ListBoxMode::CheckBox`: Check box list where each row contains an independent, interactive checkbox with crisp vector check marks.
 
 #### Constructors
 - `ListBox()`: Default list box.
@@ -672,7 +683,53 @@ Arin32 features a mathematically defined vector icon system. Icons are rendered 
 
 ---
 
-### 4.13 `arin::Theme`
+### 4.13 Context Menu System (`arin::ContextMenu`, `arin::MenuItem`, `arin::ContextMenuStyle`)
+
+Desktop-grade floating popup context menu triggered on right-click or programmatic invocation, styled after modern desktop menus with soft drop shadow, crisp border, icons, and keyboard shortcuts.
+
+```cpp
+#include <arin/context_menu.hpp>
+```
+
+#### Key Capabilities
+- **Elevation and Drop Shadow**: Rendered on the topmost overlay layer with an elevated Gaussian blur drop shadow.
+- **Screen Boundary Clamping**: Automatically adjusts popup placement coordinates when triggered near display edges, preventing the menu from clipping outside visible window bounds.
+- **Icons and Shortcuts**: Supports leading vector icons (`arin::IconType`) and right-aligned keyboard shortcut badges (e.g., "Ctrl+C", "Ctrl+V").
+- **Automatic Dismissal**: Dismisses automatically on outside mouse clicks, action execution, or when pressing the `Escape` key.
+- **Z-Order Modal Priority**: Intercepts mouse events before standard widgets when visible, preventing accidental interaction with background controls.
+
+#### Core Classes & Types
+
+##### `MenuItem`
+Represents an individual action entry or visual separator:
+- `static MenuItem action(std::string label, std::function<void()> callback = nullptr)`
+- `static MenuItem action(std::string label, IconType icon, std::function<void()> callback = nullptr)`
+- `static MenuItem action(std::string label, IconType icon, std::string shortcut, std::function<void()> callback = nullptr)`
+- `static MenuItem separator()`: Horizontal divider line.
+
+##### `ContextMenu`
+The floating menu widget itself:
+- `add_item(const std::string& label, std::function<void()> callback = nullptr)`
+- `add_item(const std::string& label, IconType icon, std::function<void()> callback = nullptr)`
+- `add_item(const std::string& label, IconType icon, const std::string& shortcut, std::function<void()> callback = nullptr)`
+- `add_separator()`: Inserts divider between action groups.
+- `clear()`: Removes all items.
+- `show(float x, float y, float screen_width = 0.0f, float screen_height = 0.0f)`: Opens and positions popup with automatic screen clamping.
+- `hide()`: Closes and dismisses the context menu.
+- `is_visible() const`: Checks if popup is active.
+- `on_dismiss(std::function<void()> cb)`: Callback fired on menu closure.
+- `set_style(const ContextMenuStyle& style)`: Customizes colors, corner radius, padding, and drop shadow.
+
+##### Application Integration via `arin::App`
+- `auto menu = app.create_context_menu()`: Allocates and registers a context menu managed by the app.
+- `app.set_default_context_menu(menu)`: Sets the menu opened automatically on right-clicks anywhere in the window.
+- `app.show_context_menu(menu, x, y)`: Opens a context menu programmatically at (x, y).
+- `app.close_context_menu()`: Dismisses currently open context menu.
+- `app.on_context_menu(cb)`: Registers a custom callback invoked with cursor coordinates `(x, y)` on right-clicks.
+
+---
+
+### 4.14 `arin::Theme`
 
 Global theme definition holding window background clear colors and default button styles.
 
@@ -682,7 +739,7 @@ Global theme definition holding window background clear colors and default butto
 
 ---
 
-### 4.14 `arin::Renderer2D`
+### 4.15 `arin::Renderer2D`
 
 Hardware-accelerated 2D rendering engine powered by OpenGL 3.3 Core profile shaders. Internally organized into modular, decoupled sub-pipelines located under `src/renderer/`:
 - **`shader_util`**: Centralized shader compilation, program linking, and 2D orthographic projection matrix calculation.
@@ -728,7 +785,7 @@ Hardware-accelerated 2D rendering engine powered by OpenGL 3.3 Core profile shad
 
 ---
 
-### 4.15 `arin::Font`
+### 4.16 `arin::Font`
 
 Zero-dependency embedded typography engine powered by **Open Sans**.
 
@@ -750,7 +807,7 @@ Zero-dependency embedded typography engine powered by **Open Sans**.
 
 ---
 
-### 4.16 `arin::Window` & `arin::IPlatformBackend`
+### 4.17 `arin::Window` & `arin::IPlatformBackend`
 
 OS abstraction isolating window creation, swap buffers, clipboard, and input event polling.
 
@@ -772,7 +829,7 @@ OS abstraction isolating window creation, swap buffers, clipboard, and input eve
 
 ---
 
-### 4.17 Geometric & Color Types
+### 4.18 Geometric & Color Types
 
 ```cpp
 #include <arin/types.hpp>
@@ -789,6 +846,7 @@ OS abstraction isolating window creation, swap buffers, clipboard, and input eve
 - `Vec2 position() const`, `Vec2 size() const`, `Vec2 center() const`
 - `float left() const`, `float right() const`, `float top() const`, `float bottom() const`
 - `bool contains(const Vec2& point) const`: Point hit-testing.
+- `bool intersects(const Rect& other) const`: Geometric collision and overlap detection.
 - `Rect expanded(float amount) const`
 
 #### `Padding`
@@ -805,7 +863,7 @@ OS abstraction isolating window creation, swap buffers, clipboard, and input eve
 
 ---
 
-### 4.18 Input System
+### 4.19 Input System
 
 ```cpp
 #include <arin/input.hpp>

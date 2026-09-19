@@ -10,6 +10,7 @@ add_executable(arin_tests
     test_layout.cpp
     test_input.cpp
     test_image_icon.cpp
+    test_context_menu.cpp
 )
 
 target_link_libraries(arin_tests PRIVATE
