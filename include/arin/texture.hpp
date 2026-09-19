@@ -145,6 +145,42 @@ public:
     );
 
     /**
+     * @brief Decodes and rasterizes an SVG file to an OpenGL 2D texture.
+     * @param filepath Path to the SVG file on disk.
+     * @param target_width Target pixel width (0 for native width * scale).
+     * @param target_height Target pixel height (0 for native height * scale).
+     * @param scale Overall scale factor if target dimensions are 0 (default: 1.0f).
+     * @param filter Texture filtering mode (default: Linear).
+     * @return Shared pointer to the new Texture, or nullptr on failure.
+     */
+    static std::shared_ptr<Texture> create_from_svg_file(
+        const std::string& filepath,
+        int target_width = 0,
+        int target_height = 0,
+        float scale = 1.0f,
+        TextureFilter filter = TextureFilter::Linear
+    );
+
+    /**
+     * @brief Decodes and rasterizes an SVG XML string or buffer to an OpenGL 2D texture.
+     * @param svg_data Pointer to raw SVG XML string or bytes.
+     * @param size_bytes Length of buffer in bytes (0 for null-terminated string).
+     * @param target_width Target pixel width (0 for native width * scale).
+     * @param target_height Target pixel height (0 for native height * scale).
+     * @param scale Overall scale factor if target dimensions are 0 (default: 1.0f).
+     * @param filter Texture filtering mode (default: Linear).
+     * @return Shared pointer to the new Texture, or nullptr on failure.
+     */
+    static std::shared_ptr<Texture> create_from_svg_memory(
+        const uint8_t* svg_data,
+        size_t size_bytes,
+        int target_width = 0,
+        int target_height = 0,
+        float scale = 1.0f,
+        TextureFilter filter = TextureFilter::Linear
+    );
+
+    /**
      * @brief Updates a rectangular sub-region of the texture with new RGBA pixel data.
      *
      * @param x Left offset in pixels within the texture.

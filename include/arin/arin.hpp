@@ -45,6 +45,7 @@
 #include "texture.hpp"
 #include "image.hpp"
 #include "icon.hpp"
+#include "svg.hpp"
 #include "renderer.hpp"
 #include "widget.hpp"
 #include "button.hpp"

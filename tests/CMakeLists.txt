@@ -12,6 +12,7 @@ add_executable(arin_tests
     test_image_icon.cpp
     test_context_menu.cpp
     test_geometry.cpp
+    test_svg.cpp
 )
 
 target_link_libraries(arin_tests PRIVATE

@@ -30,6 +30,7 @@
 #include "arin/metrics.hpp"
 #include "arin/font.hpp"
 #include <algorithm>
+#include <stdexcept>
 
 namespace arin {
 
@@ -39,6 +40,11 @@ ContextMenu::ContextMenu() {
 
 ContextMenu& ContextMenu::set_style(const ContextMenuStyle& style) {
     m_style = style;
+    return *this;
+}
+
+ContextMenu& ContextMenu::add_item(MenuItem item) {
+    m_items.push_back(std::move(item));
     return *this;
 }
 
@@ -62,6 +68,92 @@ ContextMenu& ContextMenu::add_item(
     return *this;
 }
 
+ContextMenu& ContextMenu::add_item(
+    const std::string& label,
+    const std::string& svg_path,
+    std::function<void()> callback
+) {
+    m_items.push_back(MenuItem::action(label, svg_path, std::move(callback)));
+    return *this;
+}
+
+ContextMenu& ContextMenu::add_item(
+    const std::string& label,
+    const std::string& svg_path,
+    const std::string& shortcut,
+    std::function<void()> callback
+) {
+    m_items.push_back(MenuItem::action(label, svg_path, shortcut, std::move(callback)));
+    return *this;
+}
+
+ContextMenu& ContextMenu::add_item(
+    const std::string& label,
+    std::shared_ptr<SvgDocument> svg_doc,
+    std::function<void()> callback
+) {
+    m_items.push_back(MenuItem::action(label, std::move(svg_doc), std::move(callback)));
+    return *this;
+}
+
+ContextMenu& ContextMenu::add_item(
+    const std::string& label,
+    std::shared_ptr<SvgDocument> svg_doc,
+    const std::string& shortcut,
+    std::function<void()> callback
+) {
+    m_items.push_back(MenuItem::action(label, std::move(svg_doc), shortcut, std::move(callback)));
+    return *this;
+}
+
+ContextMenu& ContextMenu::add_submenu(const std::string& label, std::function<void()> callback) {
+    m_items.push_back(MenuItem::submenu(label, std::move(callback)));
+    return *this;
+}
+
+ContextMenu& ContextMenu::add_submenu(const std::string& label, const std::string& svg_path, std::function<void()> callback) {
+    m_items.push_back(MenuItem::submenu(label, svg_path, std::move(callback)));
+    return *this;
+}
+
+ContextMenu& ContextMenu::add_submenu(const std::string& label, IconType icon, std::function<void()> callback) {
+    m_items.push_back(MenuItem::submenu(label, icon, std::move(callback)));
+    return *this;
+}
+
+ContextMenu& ContextMenu::add_submenu(const std::string& label, std::shared_ptr<SvgDocument> svg_doc, std::function<void()> callback) {
+    m_items.push_back(MenuItem::submenu(label, std::move(svg_doc), std::move(callback)));
+    return *this;
+}
+
+ContextMenu& ContextMenu::add_default_item(const std::string& label, std::function<void()> callback) {
+    auto item = MenuItem::action(label, std::move(callback));
+    item.is_default = true;
+    m_items.push_back(std::move(item));
+    return *this;
+}
+
+ContextMenu& ContextMenu::add_default_item(const std::string& label, const std::string& svg_path, std::function<void()> callback) {
+    auto item = MenuItem::action(label, svg_path, std::move(callback));
+    item.is_default = true;
+    m_items.push_back(std::move(item));
+    return *this;
+}
+
+ContextMenu& ContextMenu::add_default_item(const std::string& label, IconType icon, std::function<void()> callback) {
+    auto item = MenuItem::action(label, icon, std::move(callback));
+    item.is_default = true;
+    m_items.push_back(std::move(item));
+    return *this;
+}
+
+ContextMenu& ContextMenu::add_default_item(const std::string& label, std::shared_ptr<SvgDocument> svg_doc, std::function<void()> callback) {
+    auto item = MenuItem::action(label, std::move(svg_doc), std::move(callback));
+    item.is_default = true;
+    m_items.push_back(std::move(item));
+    return *this;
+}
+
 ContextMenu& ContextMenu::add_separator() {
     m_items.push_back(MenuItem::separator());
     return *this;
@@ -73,10 +165,18 @@ ContextMenu& ContextMenu::clear() {
     return *this;
 }
 
+MenuItem& ContextMenu::last_item() {
+    if (m_items.empty()) {
+        throw std::out_of_range("ContextMenu::last_item called on empty menu");
+    }
+    return m_items.back();
+}
+
 void ContextMenu::calculate_dimensions(const Font& font) {
     float max_label_w = 0.0f;
     float max_shortcut_w = 0.0f;
     bool has_any_icons = false;
+    bool has_any_submenus = false;
 
     float total_h = m_style.padding.top + m_style.padding.bottom;
 
@@ -85,8 +185,11 @@ void ContextMenu::calculate_dimensions(const Font& font) {
             total_h += m_style.separator_height;
         } else {
             total_h += m_style.item_height;
-            if (item.icon != IconType::None) {
+            if (item.icon != IconType::None || item.svg_icon != nullptr || !item.svg_path.empty()) {
                 has_any_icons = true;
+            }
+            if (item.has_submenu) {
+                has_any_submenus = true;
             }
             Vec2 lbl_sz = font.measure_text(item.label, m_style.label_scale);
             max_label_w = std::max(max_label_w, lbl_sz.x);
@@ -98,25 +201,23 @@ void ContextMenu::calculate_dimensions(const Font& font) {
         }
     }
 
-    float icon_gap = has_any_icons ? 26.0f : 0.0f;
-    float shortcut_gap = (max_shortcut_w > 0.0f) ? (24.0f + max_shortcut_w) : 0.0f;
-    float required_w = m_style.padding.left + m_style.padding.right + 16.0f +
-                       icon_gap + max_label_w + shortcut_gap + 12.0f;
+    const float icon_gap = (has_any_icons || (m_style.always_align_labels && !m_items.empty()))
+                         ? m_style.icon_column_width
+                         : UiMetrics::kMenuTextInsetNoIcon;
+    const float shortcut_gap = (max_shortcut_w > 0.0f) ? (20.0f + max_shortcut_w) : 0.0f;
+    const float submenu_gap = has_any_submenus ? 20.0f : 0.0f;
+    const float required_w = m_style.padding.left + m_style.padding.right +
+                             icon_gap + max_label_w + shortcut_gap + submenu_gap + 16.0f;
 
     m_bounds.width = std::max(m_style.min_width, required_w);
     m_bounds.height = total_h;
 }
 
-/**
- * @brief Returns the row rectangle for an item index (separator or action).
- */
 Rect ContextMenu::row_rect_at(size_t index) const {
-    // Step 1: Walk previous rows to find the vertical offset.
     float cursor_y = m_bounds.y + m_style.padding.top;
     for (size_t i = 0; i < index && i < m_items.size(); ++i) {
         cursor_y += m_items[i].is_separator ? m_style.separator_height : m_style.item_height;
     }
-    // Step 2: Build the full-width row inside horizontal padding.
     const float content_w = m_bounds.width - m_style.padding.left - m_style.padding.right;
     const float row_h = (index < m_items.size() && m_items[index].is_separator)
         ? m_style.separator_height
@@ -125,8 +226,6 @@ Rect ContextMenu::row_rect_at(size_t index) const {
 }
 
 void ContextMenu::show(float x, float y, float screen_width, float screen_height) {
-    // Step 1: Compatibility path uses a neutral scale for measurement.
-    // Prefer the font-aware overload whenever the renderer font is available.
     show(x, y, Font(), screen_width, screen_height);
 }
 
@@ -136,10 +235,9 @@ void ContextMenu::show(float x, float y, const Font& font, float screen_width, f
     m_screen_w = screen_width;
     m_screen_h = screen_height;
 
-    // Step 2: Measure with real font metrics when available.
     calculate_dimensions(font);
 
-    // Step 3: Clamp the popup so it never leaves the visible window surface.
+    // Clamp the popup so it never leaves the visible window surface
     if (screen_width > 0.0f) {
         if (x + m_bounds.width > screen_width - UiMetrics::kMenuScreenMargin) {
             x = screen_width - m_bounds.width - UiMetrics::kMenuScreenMargin;
@@ -202,7 +300,7 @@ bool ContextMenu::handle_mouse(const MouseEvent& ev) {
     if (ev.type == MouseEventType::ButtonDown) {
         if (!m_bounds.contains(ev.position)) {
             hide();
-            return false; // Allow click to pass through to underlying widget
+            return false; // Allow click to pass through
         }
         return true; // Click inside menu is consumed
     }
@@ -239,6 +337,40 @@ bool ContextMenu::handle_key(const KeyEvent& ev) {
         return true;
     }
 
+    // Keyboard navigation (Down / Up arrows and Enter)
+    if (ev.action == InputAction::Press || ev.action == InputAction::Repeat) {
+        if (ev.key == KeyCode::Down) {
+            int next = m_hovered_index + 1;
+            while (next < static_cast<int>(m_items.size()) && (m_items[next].is_separator || !m_items[next].enabled)) {
+                next++;
+            }
+            if (next < static_cast<int>(m_items.size())) {
+                m_hovered_index = next;
+            }
+            return true;
+        } else if (ev.key == KeyCode::Up) {
+            int prev = m_hovered_index - 1;
+            while (prev >= 0 && (m_items[prev].is_separator || !m_items[prev].enabled)) {
+                prev--;
+            }
+            if (prev >= 0) {
+                m_hovered_index = prev;
+            }
+            return true;
+        } else if (ev.key == KeyCode::Enter) {
+            if (m_hovered_index >= 0 && m_hovered_index < static_cast<int>(m_items.size())) {
+                const auto& item = m_items[m_hovered_index];
+                if (!item.is_separator && item.enabled && item.callback) {
+                    auto cb = item.callback;
+                    hide();
+                    cb();
+                    return true;
+                }
+            }
+            return true;
+        }
+    }
+
     return false;
 }
 
@@ -249,7 +381,7 @@ void ContextMenu::update(float dt) {
 void ContextMenu::render(Renderer2D& renderer) {
     if (!m_visible || m_items.empty()) return;
 
-    // 1. Elevated Floating Drop Shadow
+    // 1. Soft Drop Shadow
     renderer.draw_shadow(
         m_bounds,
         m_style.corner_radius,
@@ -258,7 +390,7 @@ void ContextMenu::render(Renderer2D& renderer) {
         m_style.shadow_blur
     );
 
-    // 2. Card Surface and 1px Border
+    // 2. Card Surface and Crisp 1px Border
     renderer.draw_rounded_rect(
         m_bounds,
         m_style.corner_radius,
@@ -269,24 +401,26 @@ void ContextMenu::render(Renderer2D& renderer) {
 
     bool has_any_icons = false;
     for (const auto& item : m_items) {
-        if (item.icon != IconType::None) {
+        if (item.icon != IconType::None || item.svg_icon != nullptr || !item.svg_path.empty()) {
             has_any_icons = true;
             break;
         }
     }
+
+    const bool align_icons = has_any_icons || (m_style.always_align_labels && !m_items.empty());
 
     // 3. Render Items
     float cur_y = m_bounds.y + m_style.padding.top;
     float content_w = m_bounds.width - m_style.padding.left - m_style.padding.right;
 
     for (size_t i = 0; i < m_items.size(); ++i) {
-        const auto& item = m_items[i];
+        auto& item = m_items[i];
 
         if (item.is_separator) {
-            // Step 3a: Draw the subtle separator rule with shared insets.
+            // Inset separator line
             const float line_y = cur_y + m_style.separator_height * detail::kHalf;
             renderer.draw_rect(
-                Rect(m_bounds.x + UiMetrics::kMenuSeparatorInset, line_y, m_bounds.width - 2.0f * UiMetrics::kMenuSeparatorInset, UiMetrics::kMenuSeparatorThickness),
+                Rect(m_bounds.x + 2.0f, line_y, m_bounds.width - 4.0f, 1.0f),
                 m_style.separator_color
             );
             cur_y += m_style.separator_height;
@@ -297,36 +431,93 @@ void ContextMenu::render(Renderer2D& renderer) {
             Color text_col;
             Color icon_col;
             Color sc_col;
+            Color chev_col;
 
             if (is_hovered) {
-                // Accent Blue selection highlight
-                renderer.draw_rounded_rect(item_rect, UiMetrics::kMenuItemCornerRadius, m_style.hover_color);
+                // Windows 10 style light grey selection highlight
+                renderer.draw_rounded_rect(
+                    item_rect,
+                    m_style.hover_corner_radius,
+                    m_style.hover_color,
+                    m_style.hover_border_color,
+                    (m_style.hover_border_color.a > 0.0f) ? 1.0f : 0.0f
+                );
                 text_col = m_style.hover_text_color;
                 icon_col = m_style.icon_hover_color;
                 sc_col   = m_style.shortcut_hover_color;
+                chev_col = m_style.chevron_hover_color;
             } else {
                 text_col = item.enabled ? m_style.text_color : m_style.text_disabled_color;
                 icon_col = item.enabled ? m_style.icon_color : m_style.text_disabled_color;
                 sc_col   = item.enabled ? m_style.shortcut_color : m_style.text_disabled_color;
+                chev_col = item.enabled ? m_style.chevron_color : m_style.text_disabled_color;
             }
 
-            // Step 3b: Draw the optional vector icon centered in its column.
-            if (item.icon != IconType::None) {
-                const float icon_sz = m_style.icon_size;
-                const float icon_x = item_rect.x + UiMetrics::kMenuIconInset;
-                const Rect icon_bounds = item_rect.centered(Vec2(icon_sz, icon_sz));
-                renderer.draw_icon(item.icon, Rect(icon_x, icon_bounds.y, icon_sz, icon_sz), icon_col);
+            // Draw Icon (SVG or vector glyph)
+            const float icon_sz = m_style.icon_size;
+            const float icon_x = item_rect.x + 6.0f;
+            const float icon_y = item_rect.y + (item_rect.height - icon_sz) * detail::kHalf;
+            const Rect icon_bounds(icon_x, icon_y, icon_sz, icon_sz);
+
+            if (item.svg_icon != nullptr || !item.svg_path.empty()) {
+                if (!item.cached_texture) {
+                    if (item.svg_icon) {
+                        item.cached_texture = item.svg_icon->create_texture(
+                            static_cast<int>(icon_sz * 2.0f),
+                            static_cast<int>(icon_sz * 2.0f)
+                        );
+                    } else if (!item.svg_path.empty()) {
+                        item.cached_texture = Texture::create_from_svg_file(
+                            item.svg_path,
+                            static_cast<int>(icon_sz * 2.0f),
+                            static_cast<int>(icon_sz * 2.0f)
+                        );
+                    }
+                }
+                if (item.cached_texture && item.cached_texture->is_valid()) {
+                    Color svg_tint = item.enabled ? Color::white() : Color(0.6f, 0.6f, 0.6f, 0.6f);
+                    renderer.draw_image(*item.cached_texture, icon_bounds, svg_tint);
+                }
+            } else if (item.icon != IconType::None) {
+                renderer.draw_icon(item.icon, icon_bounds, icon_col);
             }
 
-            // Step 3c: Draw the label with optical vertical centering.
-            const float text_x = item_rect.x + (has_any_icons ? m_style.icon_column_width : UiMetrics::kMenuTextInsetNoIcon);
-            const Rect label_bounds(text_x, item_rect.y, item_rect.right() - text_x, item_rect.height);
-            renderer.draw_text_in_rect(item.label, label_bounds, text_col, m_style.label_scale, TextAlignH::Left, TextAlignV::Center);
-
-            // Step 3d: Draw the optional shortcut right-aligned with the same centering.
+            // Label text placement
+            const float text_x = item_rect.x + (align_icons ? m_style.icon_column_width : UiMetrics::kMenuTextInsetNoIcon);
+            float text_right = item_rect.right() - 8.0f;
+            if (item.has_submenu) {
+                text_right -= 18.0f;
+            }
             if (!item.shortcut.empty()) {
                 const Vec2 sc_sz = renderer.font().measure_text(item.shortcut, m_style.shortcut_scale);
-                const float sc_x = item_rect.right() - sc_sz.x - UiMetrics::kMenuShortcutTrailingInset;
+                text_right -= (sc_sz.x + 12.0f);
+            }
+            const Rect label_bounds(text_x, item_rect.y, std::max(0.0f, text_right - text_x), item_rect.height);
+
+            if (item.is_default) {
+                // Windows default action (e.g. "Abrir") rendered bold via faux-bold overdraw
+                renderer.draw_text_in_rect(item.label, label_bounds, text_col, m_style.label_scale, TextAlignH::Left, TextAlignV::Center);
+                Rect bold_bounds(label_bounds.x + 0.5f, label_bounds.y, label_bounds.width, label_bounds.height);
+                renderer.draw_text_in_rect(item.label, bold_bounds, text_col, m_style.label_scale, TextAlignH::Left, TextAlignV::Center);
+            } else {
+                renderer.draw_text_in_rect(item.label, label_bounds, text_col, m_style.label_scale, TextAlignH::Left, TextAlignV::Center);
+            }
+
+            // Submenu chevron
+            if (item.has_submenu) {
+                const float ch_sz = 9.0f;
+                const float ch_x = item_rect.right() - ch_sz - 8.0f;
+                const float ch_y = item_rect.y + (item_rect.height - ch_sz) * detail::kHalf;
+                renderer.draw_icon(IconType::ChevronRight, Rect(ch_x, ch_y, ch_sz, ch_sz), chev_col);
+            }
+
+            // Shortcut text
+            if (!item.shortcut.empty()) {
+                const Vec2 sc_sz = renderer.font().measure_text(item.shortcut, m_style.shortcut_scale);
+                float sc_x = item_rect.right() - sc_sz.x - 8.0f;
+                if (item.has_submenu) {
+                    sc_x -= 18.0f;
+                }
                 const Rect shortcut_bounds(sc_x, item_rect.y, sc_sz.x, item_rect.height);
                 renderer.draw_text_in_rect(item.shortcut, shortcut_bounds, sc_col, m_style.shortcut_scale, TextAlignH::Left, TextAlignV::Center);
             }

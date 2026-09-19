@@ -45,6 +45,7 @@
 #include "checkbox.hpp"
 #include "text_input.hpp"
 #include "context_menu.hpp"
+#include "svg.hpp"
 #include <memory>
 #include <vector>
 #include <functional>
@@ -230,6 +231,35 @@ public:
         float height,
         ImageScaleMode scale_mode = ImageScaleMode::Fit
     );
+
+    /**
+     * @brief Creates and adds an SvgImage widget by loading an SVG file from disk.
+     */
+    std::shared_ptr<SvgImage> add_svg_image(
+        const std::string& filepath,
+        float x,
+        float y,
+        float width,
+        float height,
+        ImageScaleMode scale_mode = ImageScaleMode::Fit
+    );
+
+    /**
+     * @brief Creates and adds an SvgImage widget from an existing SvgDocument.
+     */
+    std::shared_ptr<SvgImage> add_svg_image(
+        std::shared_ptr<SvgDocument> document,
+        float x,
+        float y,
+        float width,
+        float height,
+        ImageScaleMode scale_mode = ImageScaleMode::Fit
+    );
+
+    /**
+     * @brief Adds an existing SvgImage widget instance.
+     */
+    std::shared_ptr<SvgImage> add_svg_image(std::shared_ptr<SvgImage> svg_image);
 
     /**
      * @brief Creates and adds a vector Icon widget.

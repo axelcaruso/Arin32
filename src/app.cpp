@@ -267,6 +267,39 @@ std::shared_ptr<Image> App::add_image(
     return img;
 }
 
+std::shared_ptr<SvgImage> App::add_svg_image(
+    const std::string& filepath,
+    float x,
+    float y,
+    float width,
+    float height,
+    ImageScaleMode scale_mode
+) {
+    auto svg_img = std::make_shared<SvgImage>(filepath, x, y, width, height, scale_mode);
+    m_widgets.push_back(svg_img);
+    return svg_img;
+}
+
+std::shared_ptr<SvgImage> App::add_svg_image(
+    std::shared_ptr<SvgDocument> document,
+    float x,
+    float y,
+    float width,
+    float height,
+    ImageScaleMode scale_mode
+) {
+    auto svg_img = std::make_shared<SvgImage>(std::move(document), x, y, width, height, scale_mode);
+    m_widgets.push_back(svg_img);
+    return svg_img;
+}
+
+std::shared_ptr<SvgImage> App::add_svg_image(std::shared_ptr<SvgImage> svg_image) {
+    if (svg_image) {
+        m_widgets.push_back(svg_image);
+    }
+    return svg_image;
+}
+
 std::shared_ptr<Icon> App::add_icon(
     IconType icon,
     float x,

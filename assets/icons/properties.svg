@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Properties sheet with sliders -->
+  <rect x="6" y="5" width="20" height="22" rx="2" fill="#FFFFFF" stroke="#6B7280" stroke-width="1.5"/>
+  <!-- Slider rows inside properties -->
+  <line x1="10" y1="11" x2="22" y2="11" stroke="#E5E7EB" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="14" cy="11" r="2.5" fill="#0067C0"/>
+  <line x1="10" y1="16" x2="22" y2="16" stroke="#E5E7EB" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="18" cy="16" r="2.5" fill="#10B981"/>
+  <line x1="10" y1="21" x2="22" y2="21" stroke="#E5E7EB" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="12" cy="21" r="2.5" fill="#F59E0B"/>
+</svg>

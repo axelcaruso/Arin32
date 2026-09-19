@@ -168,3 +168,81 @@ TEST(ArinContextMenuTest, EscapeKeyDismisses) {
     EXPECT_TRUE(menu.handle_key(esc_ev));
     EXPECT_FALSE(menu.is_visible());
 }
+
+TEST(ArinContextMenuTest, Windows10DefaultStyling) {
+    arin::ContextMenu menu;
+    const auto& style = menu.style();
+
+    // Verify 1:1 Windows 10 metrics and color fidelity
+    EXPECT_FLOAT_EQ(style.corner_radius, 0.0f); // Windows 10 square corners
+    EXPECT_FLOAT_EQ(style.item_height, 22.0f);  // Authentic desktop item height
+    EXPECT_FLOAT_EQ(style.icon_size, 16.0f);    // Standard 16x16 icon size
+    EXPECT_EQ(style.background_color, arin::Color::white());
+    EXPECT_EQ(style.border_color, arin::Color::from_hex(0xCCCCCC));
+    EXPECT_EQ(style.hover_color, arin::Color::from_hex(0xE5E5E5));
+    EXPECT_EQ(style.hover_text_color, arin::Color::from_hex(0x000000)); // Stays black on hover
+    EXPECT_EQ(style.text_color, arin::Color::from_hex(0x000000));
+}
+
+TEST(ArinContextMenuTest, SvgIconItemAddition) {
+    arin::ContextMenu menu;
+
+    // Add with SVG path
+    menu.add_item("Open", "assets/icons/folder-open.svg")
+        .add_item("Cut", "assets/icons/cut.svg", "Ctrl+X");
+
+    // Add with in-memory SvgDocument
+    const char* kCircleSvg =
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 32\" width=\"32\" height=\"32\">"
+        "<circle cx=\"16\" cy=\"16\" r=\"10\" fill=\"#0067C0\"/>"
+        "</svg>";
+    auto doc = arin::SvgDocument::load_from_memory(kCircleSvg);
+    ASSERT_NE(doc, nullptr);
+    menu.add_item("Circle", doc);
+
+    EXPECT_EQ(menu.item_count(), 3u);
+    EXPECT_EQ(menu.item_at(0).svg_path, "assets/icons/folder-open.svg");
+    EXPECT_EQ(menu.item_at(1).svg_path, "assets/icons/cut.svg");
+    EXPECT_EQ(menu.item_at(1).shortcut, "Ctrl+X");
+    EXPECT_NE(menu.item_at(2).svg_icon, nullptr);
+    EXPECT_TRUE(menu.item_at(2).svg_icon->is_valid());
+}
+
+TEST(ArinContextMenuTest, SubmenuAndDefaultActionFlags) {
+    arin::ContextMenu menu;
+    menu.add_default_item("Abrir")
+        .add_submenu("Conceder acceso a")
+        .add_submenu("Enviar a", "assets/icons/arrow-right.svg");
+
+    EXPECT_EQ(menu.item_count(), 3u);
+
+    // Item 0: Default action (bold in Windows 10)
+    EXPECT_EQ(menu.item_at(0).label, "Abrir");
+    EXPECT_TRUE(menu.item_at(0).is_default);
+    EXPECT_FALSE(menu.item_at(0).has_submenu);
+
+    // Item 1: Plain Submenu (has chevron >)
+    EXPECT_EQ(menu.item_at(1).label, "Conceder acceso a");
+    EXPECT_FALSE(menu.item_at(1).is_default);
+    EXPECT_TRUE(menu.item_at(1).has_submenu);
+
+    // Item 2: Submenu with SVG icon
+    EXPECT_EQ(menu.item_at(2).label, "Enviar a");
+    EXPECT_TRUE(menu.item_at(2).has_submenu);
+    EXPECT_EQ(menu.item_at(2).svg_path, "assets/icons/arrow-right.svg");
+}
+
+TEST(ArinContextMenuTest, FluentChainingAndLastItem) {
+    arin::ContextMenu menu;
+    menu.add_item("Custom Item");
+    menu.last_item()
+        .set_default(true)
+        .set_submenu(true)
+        .set_shortcut("Ctrl+Shift+P");
+
+    EXPECT_EQ(menu.item_count(), 1u);
+    const auto& item = menu.item_at(0);
+    EXPECT_TRUE(item.is_default);
+    EXPECT_TRUE(item.has_submenu);
+    EXPECT_EQ(item.shortcut, "Ctrl+Shift+P");
+}

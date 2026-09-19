@@ -21,6 +21,7 @@ Welcome to the official developer documentation for **Arin32**, a lightweight, h
    - [4.9 Automatic Layout Containers (`arin::Layout`, `arin::VBox`, `arin::HBox`, `arin::LayoutJustify`)](#49-automatic-layout-containers-arinlayout-arinvbox-arinhbox-arinlayoutjustify)
    - [4.10 List Box Widgets (`arin::ListBox`, `arin::CheckListBox`, `arin::ListBoxMode`, `arin::ListBoxStyle`)](#410-list-box-widgets-arinlistbox-arinchecklistbox-arinlistboxmode-arinlistboxstyle)
    - [4.11 Image & Texture Support (`arin::Texture`, `arin::Image`, `arin::TextureFilter`, `arin::ImageScaleMode`)](#411-image--texture-support-arintexture-arinimage-arintexturefilter-arinimagescalemode)
+   - [4.11b Scalable Vector Graphics (`arin::SvgDocument`, `arin::SvgImage`, and Icon Arsenal)](#411b-scalable-vector-graphics-arinsvgdocument-arinsvgimage-and-icon-arsenal)
    - [4.12 Vector Icons (`arin::Icon`, `arin::IconType`)](#412-vector-icons-arinicon-arinicontype)
    - [4.13 Context Menu System (`arin::ContextMenu`, `arin::MenuItem`, `arin::ContextMenuStyle`)](#413-context-menu-system-arincontextmenu-arinmenuitem-arincontextmenustyle)
    - [4.14 `arin::Theme`](#414-arintheme)
@@ -655,6 +656,147 @@ Conforms to the `IWidget` interface, allowing direct integration into layouts (`
 
 ---
 
+### 4.11b Scalable Vector Graphics (`arin::SvgDocument`, `arin::SvgImage`, and Icon Arsenal)
+
+Arin32 includes native, resolution-independent Scalable Vector Graphics (SVG) support powered by the embedded, lightweight NanoSVG engine (`src/thirdparty/nanosvg.h`, `src/thirdparty/nanosvgrast.h`). The implementation has zero dynamic library dependencies and renders crisp, anti-aliased vector artwork at arbitrary DPI settings and window scales.
+
+```cpp
+#include <arin/svg.hpp>
+```
+
+#### Key Architecture & Capabilities
+
+- **Lightweight & Header-Only Engine**: SVG parsing and software rasterization are handled entirely in-engine with no external dynamic dependencies.
+- **Dynamic Resolution-Independent Rasterization**: Instead of statically scaling fixed bitmap textures, `SvgImage` automatically rasterizes vector paths at the exact physical pixel dimensions required by its bounding box, avoiding pixelation, blurriness, or scaling artifacts.
+- **Full Layout & Widget Integration**: `SvgImage` conforms to `arin::IWidget`, meaning it integrates seamlessly into `arin::VBox`, `arin::HBox`, and absolute positioning systems.
+- **GPU Accelerated Post-Processing**: Rasterized vector textures support fragment-shader Signed Distance Field (SDF) rounded corners (`set_corner_radius`) and dynamic color tinting (`set_tint`).
+- **Standard Scale Modes**: Supports `ImageScaleMode::Fit`, `Fill`, `Stretch`, and `Center` preserving or adapting native aspect ratios.
+
+#### SVG Document Class (`arin::SvgDocument`)
+
+Represents parsed SVG vector paths and shapes:
+
+- `static std::shared_ptr<SvgDocument> load_from_file(const std::string& filepath, float dpi = 96.0f)`:
+  Loads and parses an SVG file from the filesystem.
+- `static std::shared_ptr<SvgDocument> load_from_memory(const std::string& svg_xml, float dpi = 96.0f)`:
+  Parses an SVG document from a UTF-8 XML string in memory.
+- `static std::shared_ptr<SvgDocument> load_from_memory(const uint8_t* data, size_t size_bytes, float dpi = 96.0f)`:
+  Parses an SVG document from a raw contiguous byte buffer.
+- `bool is_valid() const`:
+  Returns `true` if vector shapes were parsed successfully.
+- `float width() const`, `float height() const`, `float aspect_ratio() const`:
+  Native canvas dimensions defined by SVG attributes or `viewBox`.
+- `std::vector<uint8_t> rasterize_rgba(int target_width = 0, int target_height = 0, float scale = 1.0f, int* out_width = nullptr, int* out_height = nullptr) const`:
+  Rasterizes vector paths into 32-bit RGBA pixel bytes at the requested pixel resolution.
+- `std::shared_ptr<Texture> create_texture(int target_width = 0, int target_height = 0, float scale = 1.0f, TextureFilter filter = TextureFilter::Linear) const`:
+  Rasterizes and uploads the vector graphic directly to an OpenGL 2D texture.
+
+#### SVG Image Widget (`arin::SvgImage`)
+
+High-level widget for displaying vector graphics within user interfaces:
+
+- **Constructors**:
+  - `SvgImage()`: Empty vector image widget.
+  - `SvgImage(std::shared_ptr<SvgDocument> doc, float x, float y, float width, float height, ImageScaleMode scale_mode = ImageScaleMode::Fit)`
+  - `SvgImage(const std::string& filepath, float x, float y, float width, float height, ImageScaleMode scale_mode = ImageScaleMode::Fit)`
+- **Configuration & Chaining**:
+  - `set_document(std::shared_ptr<SvgDocument> doc)`: Replaces active vector document.
+  - `load_from_file(const std::string& filepath)`: Loads and sets an SVG file from disk.
+  - `load_from_memory(const std::string& svg_xml)`: Loads an SVG from an XML string.
+  - `set_scale_mode(ImageScaleMode mode)`: Sets scaling algorithm (`Fit`, `Fill`, `Stretch`, `Center`).
+  - `set_corner_radius(float radius)`: Applies fragment-shader SDF rounded corners.
+  - `set_tint(const Color& tint)`: Modulates color channels and transparency.
+  - `invalidate_texture()`: Clears the cached rasterization and triggers a redraw on next frame.
+  - `texture()`: Returns current cached GPU texture.
+  - `compute_content_rect()`: Computes destination rectangle inside widget bounds according to active scale mode.
+
+#### Texture & App Helpers
+
+- `Texture::create_from_svg_file(const std::string& filepath, int target_w = 0, int target_h = 0, float scale = 1.0f)`:
+  Directly decodes and rasterizes an SVG file into a GPU texture.
+- `Texture::create_from_svg_memory(const uint8_t* svg_data, size_t size, int target_w = 0, int target_h = 0, float scale = 1.0f)`:
+  Decodes and rasterizes an in-memory SVG into a GPU texture.
+- `Texture::create_from_file(path)`:
+  Automatically checks for `.svg` file extensions and delegates to SVG rasterization transparently.
+- `app.add_svg_image(filepath, x, y, width, height, scale_mode)`:
+  Instantiates and registers an `SvgImage` widget into the application.
+- `app.add_svg_image(document, x, y, width, height, scale_mode)`:
+  Instantiates an `SvgImage` widget from an existing parsed `SvgDocument`.
+
+#### Icon Asset Arsenal (`assets/icons/`)
+
+Arin32 includes a curated collection of 38 handcrafted, production-ready SVG vector icons designed for constructing file managers, navigation sidebars, and desktop explorer interfaces (modeled after modern desktop operating system file explorers):
+
+- **Folders & Locations**:
+  - `folder.svg`: Standard closed folder.
+  - `folder-open.svg`: Expanded directory folder.
+  - `folder-downloads.svg`: Downloads folder with directional badge.
+  - `folder-documents.svg`: Documents directory with sheet badge.
+  - `folder-pictures.svg`: Pictures directory with image frame badge.
+  - `folder-music.svg`: Music folder with eighth note badge.
+  - `folder-videos.svg`: Videos folder with film reel badge.
+  - `folder-desktop.svg`: Desktop directory with monitor display badge.
+  - `folder-work.svg`: Work directory with briefcase badge.
+  - `quick-access.svg`: Blue Quick Access pin navigation glyph.
+  - `this-pc.svg`: Computer workstation system drive entry.
+  - `drive-harddisk.svg`: Storage drive disk indicator.
+  - `cloud.svg`: Cloud storage synchronization location.
+  - `network.svg`: Local network share and workstation node.
+  - `trash.svg`: Recycle bin and file deletion container.
+- **File Formats**:
+  - `file.svg`: Generic file document sheet.
+  - `file-text.svg`: Plain text document (`.txt`, `.log`).
+  - `file-doc.svg`: Rich text document (`.doc`, `.docx`, `.odt`).
+  - `file-sheet.svg`: Spreadsheet table (`.xlsx`, `.csv`).
+  - `file-image.svg`: Bitmap / vector graphic file (`.png`, `.jpg`).
+  - `file-audio.svg`: Sound / audio recording (`.mp3`, `.wav`).
+  - `file-video.svg`: Video recording (`.mp4`, `.mkv`).
+  - `file-archive.svg`: Compressed archive (`.zip`, `.tar.gz`, `.7z`).
+  - `file-code.svg`: Source code file (`.cpp`, `.hpp`, `.py`).
+  - `file-pdf.svg`: Portable Document Format file (`.pdf`).
+- **Navigation, Badges & View Controls**:
+  - `arrow-left.svg`, `arrow-right.svg`, `arrow-up.svg`: Navigation toolbar direction arrows.
+  - `refresh.svg`: Address bar refresh and reload button.
+  - `search.svg`: Search input box magnifying lens.
+  - `pin.svg`, `pin-filled.svg`: Pinning items to Quick Access.
+  - `check-badge.svg`: Green synchronized / verified status badge.
+  - `sync-badge.svg`: Blue pending cloud synchronization status badge.
+  - `chevron-down.svg`, `chevron-right.svg`: Directory treeview expandable chevrons.
+  - `view-grid.svg`, `view-list.svg`: Explorer layout presentation toggle icons.
+- **Desktop Actions & Context Menu**:
+  - `cut.svg`: Scissors icon for cut action.
+  - `copy.svg`: Overlapping document sheets for copy action.
+  - `paste.svg`: Clipboard with paper sheet for paste action.
+  - `rename.svg`: Selection box with text cursor and pencil for file renaming.
+  - `properties.svg`: Document sheet with adjustment sliders for item properties.
+  - `shortcut.svg`: File sheet with bottom-left curved arrow badge for shortcut creation.
+  - `shield.svg`: Green security shield with checkmark for antivirus and security actions.
+
+#### Example: Building a File Explorer Row
+
+```cpp
+#include <arin/arin.hpp>
+
+// Create a horizontal row layout for a file explorer item
+auto row = app.add_hbox(20.0f, 40.0f, 10.0f);
+row->set_size(320.0f, 28.0f);
+
+// Add SVG folder icon
+auto icon = std::make_shared<arin::SvgImage>(
+    "assets/icons/folder-documents.svg",
+    0.0f, 0.0f, 20.0f, 20.0f
+);
+row->add_widget(icon);
+
+// Add action button for the folder name
+auto btn = row->add_button("Documents", 240.0f, 24.0f);
+btn->on_click([]() {
+    // Open directory
+});
+```
+
+---
+
 ### 4.12 Vector Icons (`arin::Icon`, `arin::IconType`)
 
 Arin32 features a mathematically defined vector icon system. Icons are rendered via hardware-accelerated Signed Distance Fields and thick anti-aliased geometric primitives. They scale losslessly to any resolution or DPI and adapt instantly to any color tint.
@@ -761,42 +903,70 @@ row->distribute_children_equally();
 
 ### 4.13 Context Menu System (`arin::ContextMenu`, `arin::MenuItem`, `arin::ContextMenuStyle`)
 
-Desktop-grade floating popup context menu triggered on right-click or programmatic invocation, styled after modern desktop menus with soft drop shadow, crisp border, icons, and keyboard shortcuts.
+Desktop-grade floating popup context menu triggered on right-click or programmatic invocation. Modeled 1:1 after authentic Windows 10 desktop menus with 1px border, soft drop shadow, 22px row height, soft light grey hover highlight, full SVG icon support, bold default actions, and submenu indicators.
 
 ```cpp
 #include <arin/context_menu.hpp>
 ```
 
 #### Key Capabilities
+
+- **1:1 Windows 10 Styling**: Square 0px corners, crisp 1px `#CCCCCC` outline, 22px item height, `#E5E5E5` hover highlight where text remains black `#000000`, and subtle 1px inset horizontal separators.
+- **Native SVG Icon Support**: Menu items accept SVG filepaths (e.g., `"assets/icons/folder-open.svg"`) or `std::shared_ptr<SvgDocument>`. SVGs are automatically rasterized at HiDPI resolution and render with their full multicolor appearance.
+- **Bold Default Action**: Items marked as default (`is_default = true` or `add_default_item`) render with prominent bold text (modeled after "Abrir" / Open in Windows).
+- **Submenu Indicators**: Items marked with `has_submenu = true` or `add_submenu` render a right-aligned directional chevron (`>`) indicating an expandable submenu.
+- **Uniform Gutter Alignment**: When any item in the menu displays an icon, all labels are cleanly aligned to the icon column, matching operating system menus.
+- **Keyboard Navigation**: Supports full keyboard traversal using Arrow Down / Arrow Up to navigate, Enter to execute the highlighted action, and Escape to dismiss.
 - **Elevation and Drop Shadow**: Rendered on the topmost overlay layer with an elevated Gaussian blur drop shadow.
 - **Screen Boundary Clamping**: Automatically adjusts popup placement coordinates when triggered near display edges, preventing the menu from clipping outside visible window bounds.
-- **Icons and Shortcuts**: Supports leading vector icons (`arin::IconType`) and right-aligned keyboard shortcut badges (e.g., "Ctrl+C", "Ctrl+V").
 - **Automatic Dismissal**: Dismisses automatically on outside mouse clicks, action execution, or when pressing the `Escape` key.
-- **Z-Order Modal Priority**: Intercepts mouse events before standard widgets when visible, preventing accidental interaction with background controls.
+- **Z-Order Modal Priority**: Intercepts mouse and keyboard events before standard widgets when visible.
 
 #### Core Classes & Types
 
 ##### `MenuItem`
-Represents an individual action entry or visual separator:
+Represents an individual action entry, submenu, or visual separator:
 - `static MenuItem action(std::string label, std::function<void()> callback = nullptr)`
+- `static MenuItem action(std::string label, const std::string& svg_path, std::function<void()> callback = nullptr)`
+- `static MenuItem action(std::string label, const std::string& svg_path, std::string shortcut, std::function<void()> callback = nullptr)`
+- `static MenuItem action(std::string label, std::shared_ptr<SvgDocument> doc, std::function<void()> callback = nullptr)`
 - `static MenuItem action(std::string label, IconType icon, std::function<void()> callback = nullptr)`
 - `static MenuItem action(std::string label, IconType icon, std::string shortcut, std::function<void()> callback = nullptr)`
+- `static MenuItem submenu(std::string label, std::function<void()> callback = nullptr)`
+- `static MenuItem submenu(std::string label, const std::string& svg_path, std::function<void()> callback = nullptr)`
 - `static MenuItem separator()`: Horizontal divider line.
+- `set_default(bool def)`: Marks the item as the bold default action.
+- `set_submenu(bool sub)`: Toggles the right-pointing submenu chevron.
+- `set_enabled(bool en)`: Enables or disables the item (disabled items render in muted grey).
 
 ##### `ContextMenu`
 The floating menu widget itself:
+- `add_item(MenuItem item)`
 - `add_item(const std::string& label, std::function<void()> callback = nullptr)`
-- `add_item(const std::string& label, IconType icon, std::function<void()> callback = nullptr)`
-- `add_item(const std::string& label, IconType icon, const std::string& shortcut, std::function<void()> callback = nullptr)`
+- `add_item(const std::string& label, const std::string& svg_path, std::function<void()> callback = nullptr)`
+- `add_item(const std::string& label, const std::string& svg_path, const std::string& shortcut, std::function<void()> callback = nullptr)`
+- `add_item(const std::string& label, std::shared_ptr<SvgDocument> doc, std::function<void()> callback = nullptr)`
+- `add_default_item(const std::string& label, std::function<void()> callback = nullptr)`
+- `add_default_item(const std::string& label, const std::string& svg_path, std::function<void()> callback = nullptr)`
+- `add_submenu(const std::string& label, std::function<void()> callback = nullptr)`
+- `add_submenu(const std::string& label, const std::string& svg_path, std::function<void()> callback = nullptr)`
 - `add_separator()`: Inserts divider between action groups.
 - `clear()`: Removes all items.
+- `last_item()`: Returns reference to most recently appended item for fluent chaining.
 - `show(float x, float y, float screen_width = 0.0f, float screen_height = 0.0f)`: Opens and positions popup with automatic screen clamping.
 - `show(float x, float y, const Font& font, float screen_width = 0.0f, float screen_height = 0.0f)`: Preferred overload that measures labels with real font metrics.
 - `row_rect_at(size_t index) const`: Returns the row rectangle used for rendering and hit testing.
 - `hide()`: Closes and dismisses the context menu.
 - `is_visible() const`: Checks if popup is active.
+- `set_hovered_index(int index)` / `hovered_index() const`: Gets or sets hovered item index.
 - `on_dismiss(std::function<void()> cb)`: Callback fired on menu closure.
 - `set_style(const ContextMenuStyle& style)`: Customizes colors, corner radius, padding, and drop shadow.
+
+##### `ContextMenuStyle`
+Preset visual configurations:
+- `ContextMenuStyle::windows10()`: 1:1 authentic Windows 10 desktop menu (white background, `#CCCCCC` border, `#E5E5E5` hover, black text, 0px corners, 22px item height).
+- `ContextMenuStyle::dark()`: Deep dark mode (`#2B2B2B` card, `#404040` border, `#414141` hover, white text).
+- `ContextMenuStyle::rounded()`: Modern rounded variant with 6px corner radius and 26px item height.
 
 ##### Application Integration via `arin::App`
 - `auto menu = app.create_context_menu()`: Allocates and registers a context menu managed by the app.

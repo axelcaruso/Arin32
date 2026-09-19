@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Security / Antivirus shield -->
+  <path d="M16 4 L6 8 L6 16 C6 22.5 10.5 27 16 29 C21.5 27 26 22.5 26 16 L26 8 Z" fill="#10B981" stroke="#059669" stroke-width="1.5"/>
+  <!-- Inner checkmark -->
+  <path d="M11 16 L14 19 L21 12" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

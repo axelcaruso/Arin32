@@ -33,22 +33,30 @@
 #include "types.hpp"
 #include "metrics.hpp"
 #include "icon.hpp"
+#include "svg.hpp"
+#include "texture.hpp"
 #include <string>
 #include <vector>
 #include <functional>
 #include <memory>
+#include <stdexcept>
 
 namespace arin {
 
 /**
- * @brief Represents an individual item, action, or separator in a ContextMenu.
+ * @brief Represents an individual item, action, submenu indicator, or separator in a ContextMenu.
  */
 struct MenuItem {
     std::string label;
     IconType icon{IconType::None};
+    std::shared_ptr<SvgDocument> svg_icon{nullptr};
+    std::string svg_path;
+    mutable std::shared_ptr<Texture> cached_texture{nullptr};
     std::string shortcut;
     bool is_separator{false};
     bool enabled{true};
+    bool has_submenu{false};
+    bool is_default{false};
     std::function<void()> callback;
 
     static MenuItem action(std::string text, std::function<void()> cb = nullptr) {
@@ -75,10 +83,111 @@ struct MenuItem {
         return item;
     }
 
+    static MenuItem action(std::string text, const std::string& svg_filepath, std::function<void()> cb = nullptr) {
+        MenuItem item;
+        item.label = std::move(text);
+        item.svg_path = svg_filepath;
+        item.callback = std::move(cb);
+        return item;
+    }
+
+    static MenuItem action(std::string text, const std::string& svg_filepath, std::string sc, std::function<void()> cb = nullptr) {
+        MenuItem item;
+        item.label = std::move(text);
+        item.svg_path = svg_filepath;
+        item.shortcut = std::move(sc);
+        item.callback = std::move(cb);
+        return item;
+    }
+
+    static MenuItem action(std::string text, std::shared_ptr<SvgDocument> doc, std::function<void()> cb = nullptr) {
+        MenuItem item;
+        item.label = std::move(text);
+        item.svg_icon = std::move(doc);
+        item.callback = std::move(cb);
+        return item;
+    }
+
+    static MenuItem action(std::string text, std::shared_ptr<SvgDocument> doc, std::string sc, std::function<void()> cb = nullptr) {
+        MenuItem item;
+        item.label = std::move(text);
+        item.svg_icon = std::move(doc);
+        item.shortcut = std::move(sc);
+        item.callback = std::move(cb);
+        return item;
+    }
+
+    static MenuItem submenu(std::string text, std::function<void()> cb = nullptr) {
+        MenuItem item;
+        item.label = std::move(text);
+        item.has_submenu = true;
+        item.callback = std::move(cb);
+        return item;
+    }
+
+    static MenuItem submenu(std::string text, const std::string& svg_filepath, std::function<void()> cb = nullptr) {
+        MenuItem item;
+        item.label = std::move(text);
+        item.svg_path = svg_filepath;
+        item.has_submenu = true;
+        item.callback = std::move(cb);
+        return item;
+    }
+
+    static MenuItem submenu(std::string text, IconType ic, std::function<void()> cb = nullptr) {
+        MenuItem item;
+        item.label = std::move(text);
+        item.icon = ic;
+        item.has_submenu = true;
+        item.callback = std::move(cb);
+        return item;
+    }
+
+    static MenuItem submenu(std::string text, std::shared_ptr<SvgDocument> doc, std::function<void()> cb = nullptr) {
+        MenuItem item;
+        item.label = std::move(text);
+        item.svg_icon = std::move(doc);
+        item.has_submenu = true;
+        item.callback = std::move(cb);
+        return item;
+    }
+
     static MenuItem separator() {
         MenuItem item;
         item.is_separator = true;
         return item;
+    }
+
+    MenuItem& set_default(bool def = true) {
+        is_default = def;
+        return *this;
+    }
+
+    MenuItem& set_submenu(bool sub = true) {
+        has_submenu = sub;
+        return *this;
+    }
+
+    MenuItem& set_enabled(bool en) {
+        enabled = en;
+        return *this;
+    }
+
+    MenuItem& set_svg(const std::string& path) {
+        svg_path = path;
+        cached_texture.reset();
+        return *this;
+    }
+
+    MenuItem& set_svg(std::shared_ptr<SvgDocument> doc) {
+        svg_icon = std::move(doc);
+        cached_texture.reset();
+        return *this;
+    }
+
+    MenuItem& set_shortcut(const std::string& sc) {
+        shortcut = sc;
+        return *this;
     }
 };
 
@@ -87,37 +196,76 @@ struct MenuItem {
  */
 struct ContextMenuStyle {
     Color background_color{Color::white()};
-    Color border_color{Color::from_hex(0xD1D5DB)};
-    Color hover_color{Color::from_hex(palette::kAccentBlue)};          ///< Accent Blue highlight on hover
-    Color hover_text_color{Color::white()};
-    Color text_color{Color::from_hex(0x1F2937)};
-    Color text_disabled_color{Color::from_hex(0x9CA3AF)};
-    Color shortcut_color{Color::from_hex(0x6B7280)};
-    Color shortcut_hover_color{Color::from_hex(0xDBEAFE)};
-    Color separator_color{Color::from_hex(0xE5E7EB)};
-    Color icon_color{Color::from_hex(0x4B5563)};
-    Color icon_hover_color{Color::white()};
-    Color shadow_color{Color(0.0f, 0.0f, 0.0f, 0.16f)};
-    Vec2 shadow_offset{0.0f, 3.0f};
-    float shadow_blur{10.0f};
-    float corner_radius{5.0f};
-    static constexpr float kDefaultItemHeight = 26.0f;
+    Color border_color{Color::from_hex(0xCCCCCC)};                    ///< Windows 10 #CCCCCC crisp 1px border
+    Color hover_color{Color::from_hex(0xE5E5E5)};                     ///< Windows 10 soft light grey hover #E5E5E5
+    Color hover_border_color{Color::transparent()};                   ///< Hover row border outline
+    Color hover_text_color{Color::from_hex(0x000000)};                ///< In Windows 10 text stays dark on hover!
+    Color text_color{Color::from_hex(0x000000)};                      ///< Windows 10 text #000000
+    Color text_disabled_color{Color::from_hex(0x8D8D8D)};
+    Color shortcut_color{Color::from_hex(0x666666)};
+    Color shortcut_hover_color{Color::from_hex(0x000000)};
+    Color separator_color{Color::from_hex(0xE4E4E4)};                 ///< Windows 10 1px separator #E4E4E4
+    Color icon_color{Color::from_hex(0x1E1E1E)};
+    Color icon_hover_color{Color::from_hex(0x000000)};
+    Color chevron_color{Color::from_hex(0x333333)};                   ///< Submenu chevron right indicator
+    Color chevron_hover_color{Color::from_hex(0x000000)};
+    Color shadow_color{Color(0.0f, 0.0f, 0.0f, 0.20f)};
+    Vec2 shadow_offset{1.0f, 2.0f};
+    float shadow_blur{8.0f};
+    float corner_radius{0.0f};                                        ///< Windows 10 crisp square corners (0px)
+    float hover_corner_radius{0.0f};                                  ///< Windows 10 hover highlight corner radius (0px)
+    static constexpr float kDefaultItemHeight = 22.0f;                ///< Windows 10 desktop menu item height
     float label_scale{UiMetrics::kMenuLabelScale};
     float shortcut_scale{UiMetrics::kMenuShortcutScale};
-    float icon_size{UiMetrics::kMenuIconSize};
-    float icon_column_width{UiMetrics::kMenuIconColumnWidth};
+    float icon_size{16.0f};                                           ///< Windows 10 standard 16x16 icon size
+    float icon_column_width{32.0f};                                   ///< Space allocated for icon column
     float item_height{kDefaultItemHeight};
     float separator_height{7.0f};
     float min_width{180.0f};
-    Padding padding{4.0f, 4.0f};
+    Padding padding{2.0f, 2.0f};                                      ///< Windows 10 2px padding
+    bool always_align_labels{true};                                   ///< Align all labels in column when icons are used
+
+    static ContextMenuStyle windows10() {
+        return ContextMenuStyle{};
+    }
+
+    static ContextMenuStyle dark() {
+        ContextMenuStyle s;
+        s.background_color = Color::from_hex(0x2B2B2B);
+        s.border_color = Color::from_hex(0x404040);
+        s.hover_color = Color::from_hex(0x414141);
+        s.hover_text_color = Color::white();
+        s.text_color = Color::white();
+        s.text_disabled_color = Color::from_hex(0x787878);
+        s.shortcut_color = Color::from_hex(0x9E9E9E);
+        s.shortcut_hover_color = Color::white();
+        s.separator_color = Color::from_hex(0x3E3E3E);
+        s.icon_color = Color::white();
+        s.icon_hover_color = Color::white();
+        s.chevron_color = Color::from_hex(0x9E9E9E);
+        s.chevron_hover_color = Color::white();
+        s.shadow_color = Color(0.0f, 0.0f, 0.0f, 0.40f);
+        return s;
+    }
+
+    static ContextMenuStyle rounded() {
+        ContextMenuStyle s;
+        s.corner_radius = 6.0f;
+        s.hover_corner_radius = 4.0f;
+        s.padding = Padding(4.0f, 4.0f);
+        s.item_height = 26.0f;
+        return s;
+    }
 };
 
 /**
  * @brief Floating popup context menu triggered by right click or programmatic action.
  *
  * Features:
- * - Clean modern styling with GPU SDF rounded corners, subtle drop shadow, and crisp 1px border.
- * - Icon badges and keyboard shortcut text (e.g. "Ctrl+C", "Ctrl+V").
+ * - 1:1 authentic Windows 10 desktop styling with crisp 1px border, soft drop shadow, and light grey hover.
+ * - Native SVG icon support and vector icon badges.
+ * - Submenu chevrons (>) and keyboard shortcut text (e.g. "Ctrl+C", "Ctrl+V").
+ * - Bold rendering for default actions (e.g. "Abrir").
  * - Automatic screen boundary clamping so popups near display edges never bleed offscreen.
  * - Clicking outside or pressing Escape automatically dismisses the menu.
  * - Z-order elevation (rendered as top-level application overlay).
@@ -134,14 +282,40 @@ public:
 
     // --- Menu Population ---
 
+    ContextMenu& add_item(MenuItem item);
     ContextMenu& add_item(const std::string& label, std::function<void()> callback = nullptr);
     ContextMenu& add_item(const std::string& label, IconType icon, std::function<void()> callback = nullptr);
     ContextMenu& add_item(const std::string& label, IconType icon, const std::string& shortcut, std::function<void()> callback = nullptr);
+
+    // SVG icon overloads
+    ContextMenu& add_item(const std::string& label, const std::string& svg_path, std::function<void()> callback = nullptr);
+    ContextMenu& add_item(const std::string& label, const std::string& svg_path, const std::string& shortcut, std::function<void()> callback = nullptr);
+    ContextMenu& add_item(const std::string& label, std::shared_ptr<SvgDocument> svg_doc, std::function<void()> callback = nullptr);
+    ContextMenu& add_item(const std::string& label, std::shared_ptr<SvgDocument> svg_doc, const std::string& shortcut, std::function<void()> callback = nullptr);
+
+    // Submenu helpers
+    ContextMenu& add_submenu(const std::string& label, std::function<void()> callback = nullptr);
+    ContextMenu& add_submenu(const std::string& label, const std::string& svg_path, std::function<void()> callback = nullptr);
+    ContextMenu& add_submenu(const std::string& label, IconType icon, std::function<void()> callback = nullptr);
+    ContextMenu& add_submenu(const std::string& label, std::shared_ptr<SvgDocument> svg_doc, std::function<void()> callback = nullptr);
+
+    // Default action helpers (rendered in bold)
+    ContextMenu& add_default_item(const std::string& label, std::function<void()> callback = nullptr);
+    ContextMenu& add_default_item(const std::string& label, const std::string& svg_path, std::function<void()> callback = nullptr);
+    ContextMenu& add_default_item(const std::string& label, IconType icon, std::function<void()> callback = nullptr);
+    ContextMenu& add_default_item(const std::string& label, std::shared_ptr<SvgDocument> svg_doc, std::function<void()> callback = nullptr);
+
     ContextMenu& add_separator();
     ContextMenu& clear();
 
     size_t item_count() const { return m_items.size(); }
+    MenuItem& item_at(size_t index) { return m_items.at(index); }
     const MenuItem& item_at(size_t index) const { return m_items.at(index); }
+    MenuItem& last_item();
+
+    /// @brief Programmatically gets or sets the hovered item index (supports keyboard navigation).
+    int hovered_index() const { return m_hovered_index; }
+    void set_hovered_index(int index) { m_hovered_index = index; }
 
     // --- Visibility and Popup Controls ---
 

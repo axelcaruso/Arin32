@@ -27,8 +27,10 @@
  */
 
 #include "arin/texture.hpp"
+#include "arin/svg.hpp"
 #include <GL/glew.h>
 #include <iostream>
+#include <algorithm>
 
 // Suppress third-party warnings in stb_image to maintain zero compiler warnings (-Wall -Wextra -Wpedantic)
 #if defined(__GNUC__) || defined(__clang__)
@@ -115,6 +117,15 @@ std::shared_ptr<Texture> Texture::create_from_file(
     const std::string& filepath,
     TextureFilter filter
 ) {
+    // Automatically detect and decode vector SVG files
+    if (filepath.size() >= 4) {
+        std::string ext = filepath.substr(filepath.size() - 4);
+        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+        if (ext == ".svg") {
+            return create_from_svg_file(filepath, 0, 0, 1.0f, filter);
+        }
+    }
+
     int width = 0;
     int height = 0;
     int channels = 0;
@@ -122,6 +133,12 @@ std::shared_ptr<Texture> Texture::create_from_file(
     // Force 4 channels (RGBA) so shaders always receive standard 32-bit pixel data
     unsigned char* data = stbi_load(filepath.c_str(), &width, &height, &channels, 4);
     if (!data) {
+        // Fallback: try SVG if standard raster decoding failed
+        auto svg_tex = create_from_svg_file(filepath, 0, 0, 1.0f, filter);
+        if (svg_tex) {
+            return svg_tex;
+        }
+
         std::cerr << "[Arin32::Texture] Failed to load image from file: " << filepath
                   << " (" << stbi_failure_reason() << ")" << std::endl;
         return nullptr;
@@ -242,6 +259,43 @@ void Texture::update_sub_rect(int x, int y, int width, int height, const uint8_t
     );
 
     glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+std::shared_ptr<Texture> Texture::create_from_svg_file(
+    const std::string& filepath,
+    int target_width,
+    int target_height,
+    float scale,
+    TextureFilter filter
+) {
+    auto doc = SvgDocument::load_from_file(filepath);
+    if (!doc || !doc->is_valid()) {
+        return nullptr;
+    }
+    return doc->create_texture(target_width, target_height, scale, filter);
+}
+
+std::shared_ptr<Texture> Texture::create_from_svg_memory(
+    const uint8_t* svg_data,
+    size_t size_bytes,
+    int target_width,
+    int target_height,
+    float scale,
+    TextureFilter filter
+) {
+    if (!svg_data) {
+        return nullptr;
+    }
+    std::shared_ptr<SvgDocument> doc;
+    if (size_bytes == 0) {
+        doc = SvgDocument::load_from_memory(reinterpret_cast<const char*>(svg_data));
+    } else {
+        doc = SvgDocument::load_from_memory(svg_data, size_bytes);
+    }
+    if (!doc || !doc->is_valid()) {
+        return nullptr;
+    }
+    return doc->create_texture(target_width, target_height, scale, filter);
 }
 
 } // namespace arin

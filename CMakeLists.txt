@@ -27,6 +27,7 @@ add_library(arin32
     src/texture.cpp
     src/image.cpp
     src/icon.cpp
+    src/svg.cpp
     src/renderer/shader_util.cpp
     src/renderer/rect_pipeline.cpp
     src/renderer/text_pipeline.cpp

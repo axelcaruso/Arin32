@@ -494,33 +494,69 @@ int main(int argc, char** argv) {
     // Run layout validation report once on startup
     run_layout_inspection();
 
-    // Create desktop floating context menu with icons, shortcuts, and actions
+    // Create authentic 1:1 Windows 10 desktop context menu with rich SVG icons
     auto ctx_menu = app.create_context_menu();
-    ctx_menu->add_item("Undo", arin::IconType::None, "Ctrl+Z", [&]() {
-        global_status = "Context Menu: Undo action triggered";
+
+    // Group 1: Default action & Quick Access
+    ctx_menu->add_default_item("Abrir", "assets/icons/folder-open.svg", [&]() {
+        global_status = "Menu Contextual: Abrir directorio";
     });
-    ctx_menu->add_item("Redo", arin::IconType::None, "Ctrl+Y", [&]() {
-        global_status = "Context Menu: Redo action triggered";
-    });
-    ctx_menu->add_separator();
-    ctx_menu->add_item("Cut", arin::IconType::Cut, "Ctrl+X", [&]() {
-        global_status = "Context Menu: Cut action triggered";
-    });
-    ctx_menu->add_item("Copy", arin::IconType::Copy, "Ctrl+C", [&]() {
-        global_status = "Context Menu: Copy action triggered";
-    });
-    ctx_menu->add_item("Paste", arin::IconType::Paste, "Ctrl+V", [&]() {
-        global_status = "Context Menu: Paste action triggered";
+    ctx_menu->add_item("Anclar a Acceso rapido", "assets/icons/quick-access.svg", [&]() {
+        global_status = "Menu Contextual: Anclado a Acceso rapido";
     });
     ctx_menu->add_separator();
-    ctx_menu->add_item("Select All", arin::IconType::None, "Ctrl+A", [&]() {
-        global_status = "Context Menu: Select All triggered";
+
+    // Group 2: Shell access, security, history, library, pinning
+    ctx_menu->add_submenu("Conceder acceso a", "assets/icons/network.svg", [&]() {
+        global_status = "Menu Contextual: Conceder acceso a red/usuarios";
     });
-    ctx_menu->add_item("Inspect Layouts", arin::IconType::Check, [&]() {
-        run_layout_inspection();
+    ctx_menu->add_item("Escanear con Seguridad", "assets/icons/shield.svg", [&]() {
+        global_status = "Menu Contextual: Escaneo de seguridad iniciado";
     });
-    ctx_menu->add_item("Reset Status", arin::IconType::Settings, [&]() {
-        global_status = "Status: Ready. Right click anywhere for Context Menu; interact with inputs or layouts.";
+    ctx_menu->add_item("Restaurar versiones anteriores", "assets/icons/refresh.svg", [&]() {
+        global_status = "Menu Contextual: Restaurar versiones anteriores";
+    });
+    ctx_menu->add_submenu("Incluir en biblioteca", "assets/icons/folder-documents.svg", [&]() {
+        global_status = "Menu Contextual: Incluir en biblioteca";
+    });
+    ctx_menu->add_item("Anclar a Inicio", "assets/icons/pin.svg", [&]() {
+        global_status = "Menu Contextual: Anclado a Inicio";
+    });
+    ctx_menu->add_item("Copiar como ruta de acceso", "assets/icons/file-text.svg", [&]() {
+        global_status = "Menu Contextual: Ruta copiada al portapapeles";
+    });
+    ctx_menu->add_separator();
+
+    // Group 3: Send To
+    ctx_menu->add_submenu("Enviar a", "assets/icons/arrow-right.svg", [&]() {
+        global_status = "Menu Contextual: Enviar a...";
+    });
+    ctx_menu->add_separator();
+
+    // Group 4: Cut & Copy
+    ctx_menu->add_item("Cortar", "assets/icons/cut.svg", "Ctrl+X", [&]() {
+        global_status = "Menu Contextual: Cortar elemento";
+    });
+    ctx_menu->add_item("Copiar", "assets/icons/copy.svg", "Ctrl+C", [&]() {
+        global_status = "Menu Contextual: Copiar elemento";
+    });
+    ctx_menu->add_separator();
+
+    // Group 5: Shortcut, Delete, Rename
+    ctx_menu->add_item("Crear acceso directo", "assets/icons/shortcut.svg", [&]() {
+        global_status = "Menu Contextual: Acceso directo creado";
+    });
+    ctx_menu->add_item("Eliminar", "assets/icons/trash.svg", "Del", [&]() {
+        global_status = "Menu Contextual: Eliminar elemento";
+    });
+    ctx_menu->add_item("Cambiar nombre", "assets/icons/rename.svg", "F2", [&]() {
+        global_status = "Menu Contextual: Cambiar nombre";
+    });
+    ctx_menu->add_separator();
+
+    // Group 6: Properties
+    ctx_menu->add_item("Propiedades", "assets/icons/properties.svg", "Alt+Enter", [&]() {
+        global_status = "Menu Contextual: Propiedades";
     });
 
     app.set_default_context_menu(ctx_menu);
@@ -888,9 +924,11 @@ int main(int argc, char** argv) {
             det_bar->set_anim_phase(0.40f);
             indet_bar->set_anim_phase(0.45f);
 
-            if (screenshot_context_menu && captured_frames == 2) {
-                // New API: measure with the live renderer font for exact width.
-                ctx_menu->show(220.0f, 150.0f, r.font(), static_cast<float>(r.viewport_width()), static_cast<float>(r.viewport_height()));
+            if (screenshot_context_menu && captured_frames >= 2) {
+                if (captured_frames == 2) {
+                    app.show_context_menu(ctx_menu, 220.0f, 100.0f);
+                }
+                ctx_menu->set_hovered_index(10); // Row "Enviar a" hovered 1:1 like maxresdefault.jpg
             }
 
             int target_frame = screenshot_context_menu ? 4 : 3;
