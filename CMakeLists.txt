@@ -24,7 +24,11 @@ add_library(arin32
     src/types.cpp
     src/theme.cpp
     src/font.cpp
-    src/renderer.cpp
+    src/renderer/shader_util.cpp
+    src/renderer/rect_pipeline.cpp
+    src/renderer/text_pipeline.cpp
+    src/renderer/progress_pipeline.cpp
+    src/renderer/renderer.cpp
     src/button.cpp
     src/progress_bar.cpp
     src/window.cpp

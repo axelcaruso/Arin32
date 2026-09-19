@@ -375,7 +375,12 @@ Global theme definition holding window background clear colors and default butto
 
 ### 4.7 `arin::Renderer2D`
 
-Hardware-accelerated 2D rendering pipeline using OpenGL 3.3 Core profile shaders.
+Hardware-accelerated 2D rendering engine powered by OpenGL 3.3 Core profile shaders. Internally organized into modular, decoupled sub-pipelines located under `src/renderer/`:
+- **`shader_util`**: Centralized shader compilation, program linking, and 2D orthographic projection matrix calculation.
+- **`rect_pipeline`**: Signed Distance Field (SDF) evaluation for anti-aliased rectangles, rounded corners, and soft drop shadows.
+- **`text_pipeline`**: Dynamic vertex streaming and batching for proportional typography with embedded Open Sans font atlas.
+- **`progress_pipeline`**: Windows 10 modern progress bars with animated cosine shimmer sweeps and traveling marquee chunks.
+- **`renderer`**: High-level orchestrator managing viewport state, frame lifecycles (`begin_frame`, `end_frame`), and drawing delegation.
 
 ```cpp
 #include <arin/renderer.hpp>

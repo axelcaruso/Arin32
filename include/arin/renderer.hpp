@@ -32,21 +32,26 @@
 #include "types.hpp"
 #include "font.hpp"
 #include <string>
-#include <vector>
 #include <memory>
 
 namespace arin {
 
+// Forward declarations of internal modular pipelines
+namespace renderer {
+class RectPipeline;
+class TextPipeline;
+class ProgressPipeline;
+} // namespace renderer
+
 /**
- * @brief High-performance, modern OpenGL 2D graphic renderer.
+ * @brief High-performance, modular 2D graphics engine powered by OpenGL 3.3 Core Profile.
  *
- * Provides GPU-accelerated drawing routines designed specifically for UI controls:
- * - Anti-aliased rounded rectangles with arbitrary corner radius
- * - Configurable border strokes
- * - Soft drop shadows
- * - GPU font rendering with texture atlas
+ * Provides GPU-accelerated rendering for:
+ * - Anti-aliased flat and rounded rectangles via Signed Distance Fields (SDF)
+ * - Soft Gaussian drop shadows
+ * - Windows 10 modern progress bars with animated cosine shimmer sweeps and traveling marquee chunks
+ * - Dynamic batched typography with embedded Open Sans font atlas and hardware scissor clipping
  *
- * Uses modern OpenGL 3.3 Core profile shaders, VAOs, and VBOs.
  * Coordinate space is window-relative with (0,0) at the top-left corner.
  */
 class Renderer2D {
@@ -58,8 +63,12 @@ public:
     Renderer2D(const Renderer2D&) = delete;
     Renderer2D& operator=(const Renderer2D&) = delete;
 
+    // Movable
+    Renderer2D(Renderer2D&&) noexcept;
+    Renderer2D& operator=(Renderer2D&&) noexcept;
+
     /**
-     * @brief Compiles shaders and initializes OpenGL buffers.
+     * @brief Compiles shaders and initializes OpenGL buffers across all pipelines.
      *
      * Must be called after an active OpenGL context has been created and bound.
      * Safe to call on Linux, FreeBSD, or future OS platforms that provide OpenGL 3.0+.
@@ -69,7 +78,7 @@ public:
     bool init();
 
     /**
-     * @brief Releases all allocated OpenGL objects (shaders, VAOs, VBOs, textures).
+     * @brief Releases all allocated OpenGL objects across all pipelines.
      */
     void shutdown();
 
@@ -77,7 +86,7 @@ public:
      * @brief Prepares the renderer for a new frame.
      *
      * Configures OpenGL state (alpha blending, viewport, disabling depth test)
-     * and updates the 2D orthographic projection matrix.
+     * and resets dynamic batch buffers.
      *
      * @param viewport_width Width of the render target in pixels.
      * @param viewport_height Height of the render target in pixels.
@@ -85,7 +94,7 @@ public:
     void begin_frame(int viewport_width, int viewport_height);
 
     /**
-     * @brief Concludes the frame and flushes any pending draw commands.
+     * @brief Concludes the frame and flushes any pending batched draw commands.
      */
     void end_frame();
 
@@ -223,62 +232,15 @@ public:
     int viewport_height() const { return m_viewport_height; }
 
 private:
-    struct TextVertex {
-        float x, y;       // Position in screen pixels
-        float u, v;       // Atlas UV coordinates
-        float r, g, b, a; // Color
-    };
-
-    void init_rect_pipeline();
-    void init_text_pipeline();
-    void init_progress_pipeline();
-    void flush_text_batch();
-
     int m_viewport_width{0};
     int m_viewport_height{0};
 
     Font m_font;
 
-    // Shader Programs
-    uint32_t m_rect_program{0};
-    uint32_t m_text_program{0};
-    uint32_t m_progress_program{0};
-
-    // Uniform locations for Progress Bar Shader
-    int32_t m_u_pb_proj{-1};
-    int32_t m_u_pb_box{-1};
-    int32_t m_u_pb_radius{-1};
-    int32_t m_u_pb_track_color{-1};
-    int32_t m_u_pb_fill_color{-1};
-    int32_t m_u_pb_border_color{-1};
-    int32_t m_u_pb_border_width{-1};
-    int32_t m_u_pb_fill_fraction{-1};
-    int32_t m_u_pb_anim_phase{-1};
-    int32_t m_u_pb_is_indeterminate{-1};
-
-    // Uniform locations for Rounded Rect Shader
-    int32_t m_u_rect_proj{-1};
-    int32_t m_u_rect_box{-1};
-    int32_t m_u_rect_radius{-1};
-    int32_t m_u_rect_fill{-1};
-    int32_t m_u_rect_border_color{-1};
-    int32_t m_u_rect_border_width{-1};
-    int32_t m_u_rect_shadow_color{-1};
-    int32_t m_u_rect_shadow_blur{-1};
-    int32_t m_u_rect_is_shadow{-1};
-
-    // OpenGL Buffers for Rects
-    uint32_t m_rect_vao{0};
-    uint32_t m_rect_vbo{0};
-
-    // Uniform locations for Text Shader
-    int32_t m_u_text_proj{-1};
-    int32_t m_u_text_sampler{-1};
-
-    // OpenGL Buffers for Dynamic Text Batching
-    uint32_t m_text_vao{0};
-    uint32_t m_text_vbo{0};
-    std::vector<TextVertex> m_text_batch;
+    // Modular Sub-Pipelines
+    std::unique_ptr<renderer::RectPipeline> m_rect_pipeline;
+    std::unique_ptr<renderer::TextPipeline> m_text_pipeline;
+    std::unique_ptr<renderer::ProgressPipeline> m_progress_pipeline;
 };
 
 } // namespace arin
