@@ -1,71 +1,43 @@
 # Arin32
 
-**Arin32** is a lightweight, modern, OS-agnostic C++ graphical user interface library powered by OpenGL. Designed for desktop operating systems (Linux, FreeBSD) and engineered to be easily ported to custom, future operating systems.
+Arin32 is a lightweight, OS-agnostic C++17 GUI library built on OpenGL 3.3 Core. It targets Linux and FreeBSD today and is designed so the same UI stack can later run on a custom operating system by implementing a single, small platform interface.
 
-Licensed under the **BSD 2-Clause License**.
+Licensed under the BSD 2-Clause License.
 
----
+## Why Arin32
 
-## Features
+- **Zero asset dependencies at runtime.** The UI font (Open Sans) ships pre-rasterized as an embedded atlas, so text rendering works out of the box even in bare-metal or early-boot environments where no filesystem is available.
+- **GPU-rendered visuals.** Rounded corners, borders, and shadows are drawn with Signed Distance Field fragment shaders, giving crisp anti-aliased edges at any resolution or scale.
+- **Portability by design.** All windowing and input handling is isolated behind the `arin::IPlatformBackend` interface. GLFW is the reference backend; a custom OS backend replaces it without touching widget or rendering code.
+- **Small, readable codebase.** The library favors clarity over abstraction layers and is covered by a GoogleTest unit suite.
 
-- **Absurdly Simple API**: Create interactive buttons, style them, and hook lambda callbacks in 5 lines of code.
-- **Embedded Font Engine**: Zero external asset dependencies. Embedded crisp font atlas allows buttons to render text out of the box in barebones environments.
-- **Hardware-Accelerated Anti-Aliasing**: Rounded corners, borders, and drop shadows rendered via GPU fragment shaders with Signed Distance Fields (SDF).
-- **OS-Agnostic Architecture**: Platform backend decoupled behind `arin::IPlatformBackend`. Production-ready GLFW backend for Linux & FreeBSD; easily swappable for custom OS kernel framebuffers.
-- **Thoroughly Documented & Commented**: Built for readability, self-explanatory architecture, and zero guessing.
-- **Automated Unit Testing**: Complete GoogleTest test suite covering geometry, math, inputs, and button state machines.
+## Widget Set
 
----
+The current high-level API covers the core building blocks of a desktop UI: buttons, checkboxes, single-line text input, progress bars (determinate and indeterminate), list boxes and check list boxes, vector icons, images and textures, and automatic vertical/horizontal layout containers. All widgets are styleable through a theme system.
 
-## 5-Line Quick Start
+## Requirements
 
-```cpp
-#include <arin/arin.hpp>
-#include <iostream>
+- C++17 compiler
+- CMake 3.16 or newer
+- OpenGL 3.3 Core capable GPU/driver
+- GLEW and GLFW 3.3+
+- GoogleTest (unit tests only)
 
-int main() {
-    arin::App app("Arin32 Window", 800, 600);
+## Build
 
-    auto btn = app.add_button("Click Me!", 300, 250, 200, 50);
-    btn->on_click([]() {
-        std::cout << "Button clicked!\n";
-    });
-
-    app.run();
-    return 0;
-}
-```
-
----
-
-## Building & Testing
-
-### Build with CMake
 ```bash
-mkdir build && cd build
-cmake ..
-make -j$(nproc)
+cmake -B build
+cmake --build build -j$(nproc)
+ctest --test-dir build --output-on-failure
 ```
 
-### Run Unit Tests
-```bash
-ctest --output-on-failure
-```
-
-### Run the Interactive Button Showcase
-```bash
-./examples/button_demo
-```
-
----
+Examples and tests are enabled by default and can be disabled with `-DARIN_BUILD_EXAMPLES=OFF` and `-DARIN_BUILD_TESTS=OFF`.
 
 ## Documentation
 
-Full architectural guides, OS porting instructions, and complete API specifications are documented in English in:
-- [**DOCS.md**](DOCS.md)
-
----
+This README is intentionally a short summary. Complete API reference, architecture overview, widget-by-widget usage, and step-by-step instructions for porting Arin32 to a custom OS are in [DOCS.md](DOCS.md). Third-party licensing notices are in [THIRDPARTY](THIRDPARTY).
 
 ## License
 
-Arin32 is distributed under the **BSD 2-Clause License**. See [LICENSE](LICENSE) for full details.
+Arin32 is distributed under the BSD 2-Clause License. See [LICENSE](LICENSE) for details.
+
