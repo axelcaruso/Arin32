@@ -94,9 +94,16 @@ public:
     void begin_frame(int viewport_width, int viewport_height);
 
     /**
-     * @brief Concludes the frame and flushes any pending batched draw commands.
+     * @brief Finishes and renders the current 2D frame.
+     *
+     * Flushes all pending batched geometries to the GPU.
      */
     void end_frame();
+
+    /**
+     * @brief Explicitly flushes pending batched primitives (e.g. text quads) to GPU.
+     */
+    void flush();
 
     /**
      * @brief Clears the screen buffer with a solid background color.
@@ -145,6 +152,18 @@ public:
         const Color& shadow_color,
         const Vec2& offset,
         float blur
+    );
+
+    /**
+     * @brief Draws a crisp checkmark inside a checkbox boundary.
+     * @param box Bounding box of the checkbox.
+     * @param color Checkmark stroke color.
+     * @param thickness Stroke thickness in pixels (default: 2.0f).
+     */
+    void draw_checkmark(
+        const Rect& box,
+        const Color& color,
+        float thickness = 2.0f
     );
 
     /**

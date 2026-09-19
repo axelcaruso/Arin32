@@ -33,6 +33,7 @@
 #include "theme.hpp"
 #include "input.hpp"
 #include "renderer.hpp"
+#include "widget.hpp"
 #include <string>
 #include <functional>
 
@@ -65,7 +66,7 @@ enum class ButtonState : uint8_t {
  * });
  * @endcode
  */
-class Button {
+class Button : public IWidget {
 public:
     using ClickCallback = std::function<void()>;
     using DetailedClickCallback = std::function<void(Button&)>;
@@ -124,7 +125,7 @@ public:
      * @param y Vertical pixel position.
      * @return Reference to this for chaining.
      */
-    Button& set_position(float x, float y);
+    Button& set_position(float x, float y) override;
 
     /**
      * @brief Sets the top-left position using a Vec2.
@@ -139,14 +140,14 @@ public:
      * @param height Height in pixels.
      * @return Reference to this for chaining.
      */
-    Button& set_size(float width, float height);
+    Button& set_size(float width, float height) override;
 
     /**
      * @brief Sets the full bounding box of the button.
      * @param bounds Bounding rectangle.
      * @return Reference to this for chaining.
      */
-    Button& set_bounds(const Rect& bounds);
+    Button& set_bounds(const Rect& bounds) override;
 
     /**
      * @brief Convenience overload to set bounds with scalar coordinates.
@@ -235,8 +236,8 @@ public:
     /// @brief Gets the current text label.
     const std::string& text() const { return m_text; }
 
-    /// @brief Gets the bounding rectangle.
-    const Rect& bounds() const { return m_bounds; }
+    /// @brief Gets the bounding box in screen pixels.
+    const Rect& bounds() const override { return m_bounds; }
 
     /// @brief Gets the current interactive state.
     ButtonState state() const { return m_state; }
@@ -248,7 +249,7 @@ public:
     bool is_pressed() const { return m_state == ButtonState::Pressed; }
 
     /// @brief Checks if the button is active for user interactions.
-    bool is_enabled() const { return m_state != ButtonState::Disabled; }
+    bool is_enabled() const override { return m_state != ButtonState::Disabled; }
 
     /// @brief Gets the active button style.
     const ButtonStyle& style() const { return m_style; }
@@ -264,7 +265,7 @@ public:
      * @param event The mouse event to evaluate.
      * @return true if the event was captured or consumed by this button, false otherwise.
      */
-    bool handle_mouse(const MouseEvent& event);
+    bool handle_mouse(const MouseEvent& event) override;
 
     /**
      * @brief Renders the button onto the active screen frame.
@@ -274,7 +275,7 @@ public:
      *
      * @param renderer The 2D renderer to draw with.
      */
-    void render(Renderer2D& renderer);
+    void render(Renderer2D& renderer) override;
 
 private:
     std::string m_text{"Button"};

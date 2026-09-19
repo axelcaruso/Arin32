@@ -33,8 +33,11 @@
 #include "theme.hpp"
 #include "window.hpp"
 #include "renderer.hpp"
+#include "widget.hpp"
 #include "button.hpp"
 #include "progress_bar.hpp"
+#include "list_box.hpp"
+#include "layout.hpp"
 #include <memory>
 #include <vector>
 #include <functional>
@@ -152,6 +155,52 @@ public:
     std::shared_ptr<ProgressBar> add_progress_bar(std::shared_ptr<ProgressBar> bar);
 
     /**
+     * @brief Adds an existing polymorphic widget to the application.
+     * @param widget Widget shared pointer.
+     * @return The same shared pointer.
+     */
+    std::shared_ptr<IWidget> add_widget(std::shared_ptr<IWidget> widget);
+
+    /**
+     * @brief Creates and adds a ListBox with specified geometry.
+     */
+    std::shared_ptr<ListBox> add_list_box(
+        float x,
+        float y,
+        float width = 220.0f,
+        float height = 180.0f,
+        ListBoxMode mode = ListBoxMode::Standard
+    );
+
+    std::shared_ptr<ListBox> add_list_box(ListBox list_box);
+    std::shared_ptr<ListBox> add_list_box(std::shared_ptr<ListBox> list_box);
+
+    /**
+     * @brief Creates and adds a CheckListBox (list with interactive checkboxes on each row).
+     */
+    std::shared_ptr<CheckListBox> add_check_list_box(
+        float x,
+        float y,
+        float width = 220.0f,
+        float height = 180.0f
+    );
+
+    /**
+     * @brief Creates and adds an automatic vertical layout container (VBox).
+     */
+    std::shared_ptr<VBox> add_vbox(float x = 0.0f, float y = 0.0f, float spacing = 8.0f);
+
+    /**
+     * @brief Creates and adds an automatic horizontal layout container (HBox).
+     */
+    std::shared_ptr<HBox> add_hbox(float x = 0.0f, float y = 0.0f, float spacing = 8.0f);
+
+    /**
+     * @brief Adds an automatic layout container to the application.
+     */
+    std::shared_ptr<Layout> add_layout(std::shared_ptr<Layout> layout);
+
+    /**
      * @brief Registers an optional custom rendering hook called every frame.
      *
      * Allows drawing custom shapes, text, or background elements alongside buttons.
@@ -194,8 +243,7 @@ private:
     Window m_window;
     Renderer2D m_renderer;
     Theme m_theme{Theme::dark()};
-    std::vector<std::shared_ptr<Button>> m_buttons;
-    std::vector<std::shared_ptr<ProgressBar>> m_progress_bars;
+    std::vector<std::shared_ptr<IWidget>> m_widgets;
     FrameCallback m_custom_frame_cb;
     FrameCallback m_after_frame_cb;
     bool m_running{true};

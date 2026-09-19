@@ -269,5 +269,61 @@ void RectPipeline::draw_shadow(
     glUseProgram(0);
 }
 
+void RectPipeline::draw_checkmark(
+    int viewport_width,
+    int viewport_height,
+    const Rect& box,
+    const Color& color,
+    float thickness
+) {
+    if (box.width <= 0.0f || box.height <= 0.0f || color.a <= 0.0f) return;
+
+    // Checkmark vertex keypoints calibrated to checkbox proportions
+    Vec2 p0(box.x + box.width * 0.22f, box.y + box.height * 0.50f);
+    Vec2 p1(box.x + box.width * 0.42f, box.y + box.height * 0.72f);
+    Vec2 p2(box.x + box.width * 0.78f, box.y + box.height * 0.28f);
+
+    glUseProgram(m_program);
+
+    float ortho[16];
+    make_ortho_projection(viewport_width, viewport_height, ortho);
+    glUniformMatrix4fv(m_u_proj, 1, GL_FALSE, ortho);
+
+    glUniform4f(m_u_box, box.x - 10.0f, box.y - 10.0f, box.width + 20.0f, box.height + 20.0f);
+    glUniform1f(m_u_radius, 0.0f);
+    glUniform4f(m_u_fill, color.r, color.g, color.b, color.a);
+    glUniform4f(m_u_border_color, 0.0f, 0.0f, 0.0f, 0.0f);
+    glUniform1f(m_u_border_width, 0.0f);
+    glUniform1i(m_u_is_shadow, 0);
+
+    auto build_segment = [](Vec2 a, Vec2 b, float th, float* out) {
+        Vec2 d(b.x - a.x, b.y - a.y);
+        float len = std::sqrt(d.x * d.x + d.y * d.y);
+        if (len < 1e-4f) return;
+        Vec2 n(-d.y / len * (th * 0.5f), d.x / len * (th * 0.5f));
+
+        out[0]  = a.x - n.x; out[1]  = a.y - n.y;
+        out[2]  = a.x + n.x; out[3]  = a.y + n.y;
+        out[4]  = b.x + n.x; out[5]  = b.y + n.y;
+        out[6]  = a.x - n.x; out[7]  = a.y - n.y;
+        out[8]  = b.x + n.x; out[9]  = b.y + n.y;
+        out[10] = b.x - n.x; out[11] = b.y - n.y;
+    };
+
+    float verts[24];
+    build_segment(p0, p1, thickness, &verts[0]);
+    build_segment(p1, p2, thickness, &verts[12]);
+
+    glBindVertexArray(m_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+
+    glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_DYNAMIC_DRAW);
+    glDrawArrays(GL_TRIANGLES, 0, 12);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+    glUseProgram(0);
+}
+
 } // namespace renderer
 } // namespace arin

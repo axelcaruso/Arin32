@@ -1,0 +1,93 @@
+/*
+ * Arin32 - Modern OpenGL Graphical User Interface Library
+ *
+ * Copyright (c) 2026, Arin32 & ArinOS Contributors
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#ifndef ARIN32_WIDGET_HPP
+#define ARIN32_WIDGET_HPP
+
+#include "types.hpp"
+#include "input.hpp"
+#include "renderer.hpp"
+
+namespace arin {
+
+/**
+ * @brief Abstract base interface for all visual and interactive user interface elements in Arin32.
+ *
+ * Unifies buttons, progress bars, list boxes, and layout containers under a polymorphic interface
+ * enabling automatic nesting, layout calculation, mouse event dispatching, and frame rendering.
+ */
+class IWidget {
+public:
+    virtual ~IWidget() = default;
+
+    /// @brief Gets the widget's bounding rectangle in screen pixels.
+    virtual const Rect& bounds() const = 0;
+
+    /// @brief Sets the widget's bounding rectangle.
+    virtual IWidget& set_bounds(const Rect& bounds) = 0;
+
+    /// @brief Sets widget position (x, y).
+    virtual IWidget& set_position(float x, float y) = 0;
+
+    /// @brief Sets widget dimensions (width, height).
+    virtual IWidget& set_size(float width, float height) = 0;
+
+    /**
+     * @brief Processes a mouse interaction event.
+     * @param ev Mouse event data (move, press, release, scroll).
+     * @return true if the event was captured and consumed by this widget, false otherwise.
+     */
+    virtual bool handle_mouse(const MouseEvent& ev) {
+        (void)ev;
+        return false;
+    }
+
+    /**
+     * @brief Advances time-dependent animations (e.g. shimmer sweeps).
+     * @param dt Elapsed delta time in seconds.
+     */
+    virtual void update(float dt) {
+        (void)dt;
+    }
+
+    /**
+     * @brief Renders the widget using the 2D graphics engine.
+     * @param renderer The 2D OpenGL renderer.
+     */
+    virtual void render(Renderer2D& renderer) = 0;
+
+    /// @brief Returns true if widget is visible.
+    virtual bool is_visible() const { return true; }
+
+    /// @brief Returns true if widget is interactive.
+    virtual bool is_enabled() const { return true; }
+};
+
+} // namespace arin
+
+#endif // ARIN32_WIDGET_HPP

@@ -42,8 +42,11 @@
 #include "input.hpp"
 #include "font.hpp"
 #include "renderer.hpp"
+#include "widget.hpp"
 #include "button.hpp"
 #include "progress_bar.hpp"
+#include "list_box.hpp"
+#include "layout.hpp"
 #include "window.hpp"
 #include "app.hpp"
 

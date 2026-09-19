@@ -85,6 +85,17 @@ public:
         float blur
     );
 
+    /**
+     * @brief Draws a crisp checkmark inside a checkbox box.
+     */
+    void draw_checkmark(
+        int viewport_width,
+        int viewport_height,
+        const Rect& box,
+        const Color& color,
+        float thickness = 2.0f
+    );
+
 private:
     uint32_t m_program{0};
     uint32_t m_vao{0};

@@ -72,6 +72,39 @@ struct MouseEvent {
     MouseButton button{MouseButton::Left};     ///< Affected button (if ButtonDown/ButtonUp)
     InputAction action{InputAction::Release};  ///< Press or Release
     Vec2 scroll_delta{0.0f, 0.0f};             ///< Scroll offset (x=horizontal, y=vertical)
+
+    static MouseEvent make_move(const Vec2& pos) {
+        MouseEvent ev;
+        ev.type = MouseEventType::Move;
+        ev.position = pos;
+        return ev;
+    }
+
+    static MouseEvent make_button_down(const Vec2& pos, MouseButton btn = MouseButton::Left) {
+        MouseEvent ev;
+        ev.type = MouseEventType::ButtonDown;
+        ev.position = pos;
+        ev.button = btn;
+        ev.action = InputAction::Press;
+        return ev;
+    }
+
+    static MouseEvent make_button_up(const Vec2& pos, MouseButton btn = MouseButton::Left) {
+        MouseEvent ev;
+        ev.type = MouseEventType::ButtonUp;
+        ev.position = pos;
+        ev.button = btn;
+        ev.action = InputAction::Release;
+        return ev;
+    }
+
+    static MouseEvent make_scroll(const Vec2& pos, const Vec2& delta) {
+        MouseEvent ev;
+        ev.type = MouseEventType::Scroll;
+        ev.position = pos;
+        ev.scroll_delta = delta;
+        return ev;
+    }
 };
 
 /**

@@ -15,12 +15,15 @@ Welcome to the official developer documentation for **Arin32**, a lightweight, h
    - [4.3 `arin::ButtonStyle`](#43-arinbuttonstyle)
    - [4.4 `arin::ProgressBar` & `arin::ProgressBarMode`](#44-arinprogressbar--arinprogressbarmode)
    - [4.5 `arin::ProgressBarStyle`](#45-arinprogressbarstyle)
-   - [4.6 `arin::Theme`](#46-arintheme)
-   - [4.7 `arin::Renderer2D`](#47-arinrenderer2d)
-   - [4.8 `arin::Font`](#48-arinfont)
-   - [4.9 `arin::Window` & `arin::IPlatformBackend`](#49-arinwindow--ariniplatformbackend)
-   - [4.10 Geometric & Color Types (`Vec2`, `Rect`, `Color`, `Padding`)](#410-geometric--color-types)
-   - [4.11 Input System (`InputState`, `MouseEvent`, `MouseButton`, `InputAction`)](#411-input-system)
+   - [4.6 `arin::IWidget` (Polymorphic Widget Base)](#46-ariniwidget-polymorphic-widget-base)
+   - [4.7 Automatic Layout Containers (`arin::Layout`, `arin::VBox`, `arin::HBox`)](#47-automatic-layout-containers-arinlayout-arinvbox-arinhbox)
+   - [4.8 List Box Widgets (`arin::ListBox`, `arin::CheckListBox`, `arin::ListBoxMode`)](#48-list-box-widgets-arinlistbox-arinchecklistbox-arinlistboxmode)
+   - [4.9 `arin::Theme`](#49-arintheme)
+   - [4.10 `arin::Renderer2D`](#410-arinrenderer2d)
+   - [4.11 `arin::Font`](#411-arinfont)
+   - [4.12 `arin::Window` & `arin::IPlatformBackend`](#412-arinwindow--ariniplatformbackend)
+   - [4.13 Geometric & Color Types (`Vec2`, `Rect`, `Color`, `Padding`)](#413-geometric--color-types)
+   - [4.14 Input System (`InputState`, `MouseEvent`, `MouseButton`, `InputAction`)](#414-input-system)
 5. [Building, Running, and Testing](#5.building-running-and-testing)
    - [Linux Build](#linux-build)
    - [FreeBSD Build](#freebsd-build)
@@ -175,6 +178,18 @@ The central coordinator managing window lifecycle, OpenGL context initialization
   Adds a copy of an existing progress bar.
 - `std::shared_ptr<ProgressBar> add_progress_bar(std::shared_ptr<ProgressBar> bar)`:
   Adds a pre-allocated progress bar shared pointer.
+- `std::shared_ptr<IWidget> add_widget(std::shared_ptr<IWidget> widget)`:
+  Registers an arbitrary polymorphic `IWidget` into the application's event loop and render list.
+- `std::shared_ptr<ListBox> add_list_box(float x, float y, float width = 220.0f, float height = 180.0f, ListBoxMode mode = ListBoxMode::Standard)`:
+  Creates, registers, and returns an interactive single-selection or checkbox list box.
+- `std::shared_ptr<CheckListBox> add_check_list_box(float x, float y, float width = 220.0f, float height = 180.0f)`:
+  Creates, registers, and returns a specialized check box list with independent item toggling.
+- `std::shared_ptr<VBox> add_vbox(float x = 0.0f, float y = 0.0f, float spacing = 8.0f)`:
+  Creates and registers a vertical automatic layout container (stacks child widgets top-to-bottom).
+- `std::shared_ptr<HBox> add_hbox(float x = 0.0f, float y = 0.0f, float spacing = 8.0f)`:
+  Creates and registers a horizontal automatic layout container (stacks child widgets left-to-right).
+- `std::shared_ptr<Layout> add_layout(std::shared_ptr<Layout> layout)`:
+  Registers a pre-allocated layout container.
 - `void on_frame(FrameCallback cb)`:
   Registers a user rendering callback executed every frame before buttons are drawn (ideal for titles, backgrounds, panels).
 - `void on_after_frame(FrameCallback cb)`:
@@ -363,7 +378,109 @@ Visual configuration for `ProgressBar` matching Windows 10 flat modern design sp
 
 ---
 
-### 4.6 `arin::Theme`
+### 4.6 `arin::IWidget` (Polymorphic Widget Base)
+
+Base interface for all UI elements in Arin32 (`Button`, `ProgressBar`, `ListBox`, `CheckListBox`, `Layout`). Enables uniform lifecycle management, event dispatching, and container nesting.
+
+```cpp
+#include <arin/widget.hpp>
+```
+
+#### Core Virtual Methods
+- `virtual const Rect& bounds() const = 0`: Returns current bounding box.
+- `virtual IWidget& set_bounds(const Rect& bounds)`: Updates bounding box.
+- `virtual IWidget& set_position(float x, float y)`: Moves widget.
+- `virtual IWidget& set_size(float width, float height)`: Resizes widget.
+- `virtual bool handle_mouse(const MouseEvent& ev)`: Dispatches mouse move, click, or scroll events. Returns `true` if consumed.
+- `virtual void update(float dt)`: Advances widget animations and timers.
+- `virtual void render(Renderer2D& renderer) = 0`: Draws widget to OpenGL frame.
+
+---
+
+### 4.7 Automatic Layout Containers (`arin::Layout`, `arin::VBox`, `arin::HBox`)
+
+Eliminates manual pixel coordinate calculations by automatically arranging child widgets linearly with customizable spacing, padding, and cross-axis alignment. Reaches Flutter- and Qt-level ergonomics.
+
+```cpp
+#include <arin/layout.hpp>
+```
+
+#### Layout Orientations & Alignments
+- `enum class LayoutOrientation : uint8_t { Vertical, Horizontal };`
+- `enum class LayoutAlignment : uint8_t { Start, Center, End, Stretch };`
+
+#### Container Classes
+- **`arin::Layout`**: General linear layout container.
+- **`arin::VBox`**: Vertical container stacking children top-to-bottom.
+- **`arin::HBox`**: Horizontal container placing children left-to-right.
+
+#### Fluent Configuration
+- `set_spacing(float spacing)`: Sets pixel gap between adjacent child widgets.
+- `set_padding(const Padding& padding)` / `set_padding(float uniform)`: Sets inner padding offsets.
+- `set_alignment(LayoutAlignment alignment)`: Configures cross-axis alignment (`Start`, `Center`, `End`, `Stretch`).
+- `set_auto_size(bool enable)`: Automatically resizes layout bounding box to wrap its children (default: true).
+
+#### Child Management
+- `add_widget(std::shared_ptr<IWidget> widget)`: Appends an existing polymorphic widget.
+- `add_button(const std::string& label, float width = 85.0f, float height = 32.0f)`: Creates and appends a `Button`.
+- `add_progress_bar(float width = 260.0f, float height = 18.0f, float value = 0.0f)`: Creates and appends a `ProgressBar`.
+- `add_list_box(float width = 220.0f, float height = 180.0f, ListBoxMode mode = ListBoxMode::Standard)`: Creates and appends a `ListBox`.
+- `add_check_list_box(float width = 220.0f, float height = 180.0f)`: Creates and appends a `CheckListBox`.
+- `add_vbox(float spacing = 8.0f)` / `add_hbox(float spacing = 8.0f)`: Appends a nested layout container (supports arbitrary recursion).
+- `add_spacer(float size)`: Inserts a fixed empty space along the layout axis.
+- `clear()`: Removes all managed children.
+- `update_layout()`: Recalculates all child positions and sizes. Automatically called before rendering and input dispatching.
+
+---
+
+### 4.8 List Box Widgets (`arin::ListBox`, `arin::CheckListBox`, `arin::ListBoxMode`)
+
+Implements modern Windows 10 style list boxes with single-selection, multiple-selection check boxes, smooth hardware-clipped item scrolling, and draggable scrollbars.
+
+```cpp
+#include <arin/list_box.hpp>
+```
+
+#### Operating Modes
+- `ListBoxMode::Standard`: Single-item selection with Accent Blue (`#0067C0`) background highlight and white typography.
+- `ListBoxMode::CheckBox`: Check box list where each row contains an independent, interactive checkbox with crisp checkmark (`✓`).
+
+#### Constructors
+- `ListBox()`: Default list box.
+- `ListBox(float x, float y, float width = 220.0f, float height = 180.0f, ListBoxMode mode = ListBoxMode::Standard)`
+- `CheckListBox(float x, float y, float width = 220.0f, float height = 180.0f)`: Dedicated CheckBox list subclass.
+
+#### Item Management
+- `add_item(const std::string& text, bool checked = false)`: Appends a row item.
+- `add_items(const std::vector<std::string>& items)`: Appends multiple items.
+- `set_items(const std::vector<std::string>& items)`: Replaces entire item collection.
+- `clear_items()`: Clears all items.
+- `size_t item_count() const`: Number of items.
+- `const std::string& item_text(size_t index) const`: Text of item at index.
+
+#### Selection & Check State
+- `int selected_index() const`: Current highlighted row index (-1 if none).
+- `std::string selected_item() const`: Text of current selected item.
+- `set_selected_index(int index)`: Selects specified row index.
+- `bool is_checked(size_t index) const`: Check state of row.
+- `set_checked(size_t index, bool checked)`: Sets checked state.
+- `toggle_checked(size_t index)`: Inverts checked state.
+- `std::vector<int> checked_indices() const`: List of all checked row indices.
+- `std::vector<std::string> checked_items() const`: List of all checked item labels.
+
+#### Callbacks
+- `on_selection_changed(std::function<void(int index, const std::string& text)> cb)`: Fired on row selection.
+- `on_item_toggled(std::function<void(int index, bool checked)> cb)`: Fired on checkbox toggle.
+
+#### Scrolling & Scrollbar
+- `bool needs_scrollbar() const`: True if items overflow visible container height.
+- `float scroll_offset() const` / `float max_scroll_offset() const`: Scroll pixel positions.
+- Smooth mouse wheel scrolling and interactive thumb dragging.
+- Content rendering strictly clipped to card boundaries via `glScissor`.
+
+---
+
+### 4.9 `arin::Theme`
 
 Global theme definition holding window background clear colors and default button styles.
 
@@ -373,14 +490,14 @@ Global theme definition holding window background clear colors and default butto
 
 ---
 
-### 4.7 `arin::Renderer2D`
+### 4.10 `arin::Renderer2D`
 
 Hardware-accelerated 2D rendering engine powered by OpenGL 3.3 Core profile shaders. Internally organized into modular, decoupled sub-pipelines located under `src/renderer/`:
 - **`shader_util`**: Centralized shader compilation, program linking, and 2D orthographic projection matrix calculation.
-- **`rect_pipeline`**: Signed Distance Field (SDF) evaluation for anti-aliased rectangles, rounded corners, and soft drop shadows.
+- **`rect_pipeline`**: Signed Distance Field (SDF) evaluation for anti-aliased rectangles, rounded corners, soft drop shadows, and checkmarks.
 - **`text_pipeline`**: Dynamic vertex streaming and batching for proportional typography with embedded Open Sans font atlas.
 - **`progress_pipeline`**: Windows 10 modern progress bars with animated cosine shimmer sweeps and traveling marquee chunks.
-- **`renderer`**: High-level orchestrator managing viewport state, frame lifecycles (`begin_frame`, `end_frame`), and drawing delegation.
+- **`renderer`**: High-level orchestrator managing viewport state, frame lifecycles (`begin_frame`, `end_frame`, `flush`), and drawing delegation.
 
 ```cpp
 #include <arin/renderer.hpp>
@@ -391,12 +508,15 @@ Hardware-accelerated 2D rendering engine powered by OpenGL 3.3 Core profile shad
 - `void shutdown()`: Frees OpenGL resources.
 - `void begin_frame(int viewport_width, int viewport_height)`: Sets orthographic projection matrix and blending modes.
 - `void end_frame()`: Flushes all batched geometry.
+- `void flush()`: Flushes pending geometry (e.g. text quads) without ending frame.
 - `void clear(const Color& color)`: Clears frame with specified color.
 - `void draw_rect(const Rect& rect, const Color& color)`: Draws flat rectangle.
 - `void draw_rounded_rect(const Rect& rect, float corner_radius, const Color& fill_color, const Color& border_color = Color::transparent(), float border_width = 0.0f)`:
   Draws anti-aliased rounded rectangle via fragment shader Signed Distance Field.
 - `void draw_shadow(const Rect& rect, float corner_radius, const Color& shadow_color, const Vec2& offset, float blur)`:
   Draws soft Gaussian drop shadow.
+- `void draw_checkmark(const Rect& box, const Color& color, float thickness = 2.0f)`:
+  Draws crisp anti-aliased checkmark inside a checkbox boundary.
 - `void draw_progress_bar(const Rect& rect, float corner_radius, const Color& track_color, const Color& fill_color, const Color& border_color, float border_width, float fill_fraction, float anim_phase, bool is_indeterminate)`:
   Draws modern Windows 10 style progress bar with 1px border, determinate fill with animated cosine shimmer sweep, or indeterminate traveling marquee chunk.
 - `void draw_text(const std::string& text, const Vec2& position, const Color& color, float scale = 1.0f)`:
@@ -409,7 +529,7 @@ Hardware-accelerated 2D rendering engine powered by OpenGL 3.3 Core profile shad
 
 ---
 
-### 4.8 `arin::Font`
+### 4.11 `arin::Font`
 
 Zero-dependency embedded typography engine powered by **Open Sans**.
 
@@ -431,7 +551,7 @@ Zero-dependency embedded typography engine powered by **Open Sans**.
 
 ---
 
-### 4.9 `arin::Window` & `arin::IPlatformBackend`
+### 4.12 `arin::Window` & `arin::IPlatformBackend`
 
 OS abstraction isolating window creation, swap buffers, and event polling.
 
@@ -441,7 +561,7 @@ OS abstraction isolating window creation, swap buffers, and event polling.
 
 ---
 
-### 4.10 Geometric & Color Types
+### 4.13 Geometric & Color Types
 
 ```cpp
 #include <arin/types.hpp>
@@ -460,6 +580,10 @@ OS abstraction isolating window creation, swap buffers, and event polling.
 - `bool contains(const Vec2& point) const`: Point hit-testing.
 - `Rect expanded(float amount) const`
 
+#### `Padding`
+- `float left, top, right, bottom`
+- Constructors: `Padding(uniform)`, `Padding(horizontal, vertical)`, `Padding(left, top, right, bottom)`
+
 #### `Color`
 - `float r, g, b, a` in normalized range `[0.0, 1.0]`.
 - `static Color from_rgba8(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255)`
@@ -470,7 +594,7 @@ OS abstraction isolating window creation, swap buffers, and event polling.
 
 ---
 
-### 4.11 Input System
+### 4.14 Input System
 
 ```cpp
 #include <arin/input.hpp>
@@ -479,7 +603,7 @@ OS abstraction isolating window creation, swap buffers, and event polling.
 - `enum class MouseButton : uint8_t { Left, Right, Middle };`
 - `enum class InputAction : uint8_t { Release, Press, Repeat };`
 - `enum class MouseEventType : uint8_t { Move, ButtonDown, ButtonUp, Scroll };`
-- `struct MouseEvent`: Holds position, button, action, scroll delta.
+- `struct MouseEvent`: Holds position, button, action, scroll delta, with factory helpers (`make_move`, `make_button_down`, `make_button_up`, `make_scroll`).
 - `class InputState`: Tracks current cursor position and pressed button state array.
 
 ---

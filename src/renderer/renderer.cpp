@@ -111,11 +111,15 @@ void Renderer2D::begin_frame(int viewport_width, int viewport_height) {
     m_text_pipeline->clear();
 }
 
+void Renderer2D::flush() {
+    m_text_pipeline->flush(m_viewport_width, m_viewport_height, m_font.texture_id());
+}
+
 /**
  * @brief Flushes batched primitives at the end of the frame.
  */
 void Renderer2D::end_frame() {
-    m_text_pipeline->flush(m_viewport_width, m_viewport_height, m_font.texture_id());
+    flush();
 }
 
 /**
@@ -179,6 +183,14 @@ void Renderer2D::draw_shadow(
         offset,
         blur
     );
+}
+
+/**
+ * @brief Draws a crisp checkmark inside a checkbox boundary.
+ */
+void Renderer2D::draw_checkmark(const Rect& box, const Color& color, float thickness) {
+    m_text_pipeline->flush(m_viewport_width, m_viewport_height, m_font.texture_id());
+    m_rect_pipeline->draw_checkmark(m_viewport_width, m_viewport_height, box, color, thickness);
 }
 
 /**

@@ -43,20 +43,20 @@ App::App(const std::string& title, int width, int height)
         std::cerr << "[Arin32::App] Failed to initialize OpenGL 2D renderer." << std::endl;
     }
 
-    // Set up event routing to managed buttons
+    // Set up event routing to managed widgets
     m_window.on_mouse_event([this](const MouseEvent& ev) {
         bool captured = false;
 
-        // Traverse in reverse z-order (top-most button gets first priority)
-        for (auto it = m_buttons.rbegin(); it != m_buttons.rend(); ++it) {
+        // Traverse in reverse z-order (top-most widget gets first priority)
+        for (auto it = m_widgets.rbegin(); it != m_widgets.rend(); ++it) {
             if ((*it)->handle_mouse(ev)) {
                 captured = true;
 
-                // When cursor is inside a top button, ensure all other buttons unhover
+                // When cursor is inside a top widget, ensure all other widgets unhover
                 if (ev.type == MouseEventType::Move) {
                     MouseEvent offscreen_ev = ev;
                     offscreen_ev.position = Vec2(-99999.0f, -99999.0f);
-                    for (auto& other : m_buttons) {
+                    for (auto& other : m_widgets) {
                         if (other != *it) {
                             other->handle_mouse(offscreen_ev);
                         }
@@ -66,13 +66,18 @@ App::App(const std::string& title, int width, int height)
             }
         }
 
-        // If not captured during a move event, notify all buttons of cursor position
+        // If not captured during a move event, notify all widgets of cursor position
         if (!captured && ev.type == MouseEventType::Move) {
-            for (auto& btn : m_buttons) {
-                btn->handle_mouse(ev);
+            for (auto& w : m_widgets) {
+                w->handle_mouse(ev);
             }
         }
     });
+}
+
+std::shared_ptr<IWidget> App::add_widget(std::shared_ptr<IWidget> widget) {
+    m_widgets.push_back(widget);
+    return widget;
 }
 
 std::shared_ptr<Button> App::add_button(
@@ -83,18 +88,18 @@ std::shared_ptr<Button> App::add_button(
     float height
 ) {
     auto btn = std::make_shared<Button>(label, x, y, width, height);
-    m_buttons.push_back(btn);
+    m_widgets.push_back(btn);
     return btn;
 }
 
 std::shared_ptr<Button> App::add_button(Button button) {
     auto btn = std::make_shared<Button>(std::move(button));
-    m_buttons.push_back(btn);
+    m_widgets.push_back(btn);
     return btn;
 }
 
 std::shared_ptr<Button> App::add_button(std::shared_ptr<Button> button) {
-    m_buttons.push_back(button);
+    m_widgets.push_back(button);
     return button;
 }
 
@@ -108,19 +113,70 @@ std::shared_ptr<ProgressBar> App::add_progress_bar(
     float max
 ) {
     auto bar = std::make_shared<ProgressBar>(x, y, width, height, value, min, max);
-    m_progress_bars.push_back(bar);
+    m_widgets.push_back(bar);
     return bar;
 }
 
 std::shared_ptr<ProgressBar> App::add_progress_bar(ProgressBar bar) {
     auto ptr = std::make_shared<ProgressBar>(std::move(bar));
-    m_progress_bars.push_back(ptr);
+    m_widgets.push_back(ptr);
     return ptr;
 }
 
 std::shared_ptr<ProgressBar> App::add_progress_bar(std::shared_ptr<ProgressBar> bar) {
-    m_progress_bars.push_back(bar);
+    m_widgets.push_back(bar);
     return bar;
+}
+
+std::shared_ptr<ListBox> App::add_list_box(
+    float x,
+    float y,
+    float width,
+    float height,
+    ListBoxMode mode
+) {
+    auto lb = std::make_shared<ListBox>(x, y, width, height, mode);
+    m_widgets.push_back(lb);
+    return lb;
+}
+
+std::shared_ptr<ListBox> App::add_list_box(ListBox list_box) {
+    auto ptr = std::make_shared<ListBox>(std::move(list_box));
+    m_widgets.push_back(ptr);
+    return ptr;
+}
+
+std::shared_ptr<ListBox> App::add_list_box(std::shared_ptr<ListBox> list_box) {
+    m_widgets.push_back(list_box);
+    return list_box;
+}
+
+std::shared_ptr<CheckListBox> App::add_check_list_box(
+    float x,
+    float y,
+    float width,
+    float height
+) {
+    auto clb = std::make_shared<CheckListBox>(x, y, width, height);
+    m_widgets.push_back(clb);
+    return clb;
+}
+
+std::shared_ptr<VBox> App::add_vbox(float x, float y, float spacing) {
+    auto vbox = std::make_shared<VBox>(x, y, spacing);
+    m_widgets.push_back(vbox);
+    return vbox;
+}
+
+std::shared_ptr<HBox> App::add_hbox(float x, float y, float spacing) {
+    auto hbox = std::make_shared<HBox>(x, y, spacing);
+    m_widgets.push_back(hbox);
+    return hbox;
+}
+
+std::shared_ptr<Layout> App::add_layout(std::shared_ptr<Layout> layout) {
+    m_widgets.push_back(layout);
+    return layout;
 }
 
 void App::on_frame(FrameCallback cb) {
@@ -141,11 +197,11 @@ void App::close() {
  * Runs at display refresh rate with VSync enabled. Automatically handles:
  * - Frame delta time calculation for smooth hardware animations
  * - Operating system window events
- * - Animation updates for progress bars
+ * - Animation updates for all managed widgets
  * - Screen clearing
  * - 2D projection matrix sizing
  * - Custom frame hooks
- * - Rendering progress bars and button widgets
+ * - Rendering all widgets in z-order
  * - OpenGL buffer swap
  */
 void App::run() {
@@ -168,9 +224,9 @@ void App::run() {
         // 1. Process OS window and input events
         m_window.poll_events();
 
-        // 2. Advance animations for all managed progress bars
-        for (auto& bar : m_progress_bars) {
-            bar->update(dt);
+        // 2. Advance animations/state for all managed widgets
+        for (auto& w : m_widgets) {
+            w->update(dt);
         }
 
         // 3. Fetch current physical framebuffer dimensions
@@ -190,25 +246,20 @@ void App::run() {
                 m_custom_frame_cb(m_renderer);
             }
 
-            // 7. Render all UI progress bars
-            for (auto& bar : m_progress_bars) {
-                bar->render(m_renderer);
+            // 7. Render all UI widgets
+            for (auto& w : m_widgets) {
+                w->render(m_renderer);
             }
 
-            // 8. Render all UI buttons
-            for (auto& btn : m_buttons) {
-                btn->render(m_renderer);
-            }
-
-            // 9. Flush drawing batches
+            // 8. Flush drawing batches
             m_renderer.end_frame();
 
-            // 10. Invoke optional after_frame callback (overlays / screenshots)
+            // 9. Invoke optional after_frame callback (overlays / screenshots)
             if (m_after_frame_cb) {
                 m_after_frame_cb(m_renderer);
             }
 
-            // 11. Present rendered frame to the display
+            // 10. Present rendered frame to the display
             m_window.swap_buffers();
         }
     }

@@ -9,3 +9,4 @@ lib/
 *.png
 .cache/
 compile_commands.json
+*html

@@ -1,0 +1,214 @@
+/*
+ * Arin32 - Modern OpenGL Graphical User Interface Library
+ *
+ * Copyright (c) 2026, Arin32 & ArinOS Contributors
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#ifndef ARIN32_LAYOUT_HPP
+#define ARIN32_LAYOUT_HPP
+
+#include "types.hpp"
+#include "widget.hpp"
+#include "button.hpp"
+#include "progress_bar.hpp"
+#include "list_box.hpp"
+#include <vector>
+#include <memory>
+
+namespace arin {
+
+/**
+ * @brief Direction of linear widget placement.
+ */
+enum class LayoutOrientation : uint8_t {
+    Vertical,   ///< Top-to-bottom vertical column (VBox)
+    Horizontal  ///< Left-to-right horizontal row (HBox)
+};
+
+/**
+ * @brief Cross-axis alignment options for widgets in a layout container.
+ */
+enum class LayoutAlignment : uint8_t {
+    Start,   ///< Align to left in VBox, or top in HBox
+    Center,  ///< Center along cross axis
+    End,     ///< Align to right in VBox, or bottom in HBox
+    Stretch  ///< Stretch child along cross axis to match container width/height
+};
+
+class VBox;
+class HBox;
+
+/**
+ * @brief Automatic layout container for arranging widgets vertically or horizontally.
+ *
+ * Eliminates the need to calculate manual pixel coordinates for every UI element.
+ * Supports nesting (e.g. an HBox of action buttons inside a VBox dialog panel).
+ */
+class Layout : public IWidget {
+public:
+    Layout(LayoutOrientation orientation = LayoutOrientation::Vertical,
+           float x = 0.0f, float y = 0.0f, float spacing = 8.0f);
+
+    ~Layout() override = default;
+
+    // --- Fluent Configuration ---
+
+    Layout& set_bounds(const Rect& bounds) override;
+    Layout& set_position(float x, float y) override;
+    Layout& set_size(float width, float height) override;
+    Layout& set_spacing(float spacing);
+    Layout& set_padding(const Padding& padding);
+    Layout& set_padding(float uniform_padding);
+    Layout& set_alignment(LayoutAlignment alignment);
+    Layout& set_auto_size(bool auto_size);
+
+    // --- Child Management ---
+
+    /**
+     * @brief Adds an existing widget to the layout container.
+     */
+    std::shared_ptr<IWidget> add_widget(std::shared_ptr<IWidget> widget);
+
+    /**
+     * @brief Creates and appends a Button to the layout.
+     */
+    std::shared_ptr<Button> add_button(
+        const std::string& label,
+        float width = 85.0f,
+        float height = 32.0f
+    );
+
+    /**
+     * @brief Creates and appends a ProgressBar to the layout.
+     */
+    std::shared_ptr<ProgressBar> add_progress_bar(
+        float width = 260.0f,
+        float height = 18.0f,
+        float value = 0.0f
+    );
+
+    /**
+     * @brief Creates and appends a ListBox to the layout.
+     */
+    std::shared_ptr<ListBox> add_list_box(
+        float width = 220.0f,
+        float height = 180.0f,
+        ListBoxMode mode = ListBoxMode::Standard
+    );
+
+    /**
+     * @brief Creates and appends a CheckListBox to the layout.
+     */
+    std::shared_ptr<CheckListBox> add_check_list_box(
+        float width = 220.0f,
+        float height = 180.0f
+    );
+
+    /**
+     * @brief Creates and appends a nested vertical box layout.
+     */
+    std::shared_ptr<VBox> add_vbox(float spacing = 8.0f);
+
+    /**
+     * @brief Creates and appends a nested horizontal box layout.
+     */
+    std::shared_ptr<HBox> add_hbox(float spacing = 8.0f);
+
+    /**
+     * @brief Adds an empty spacer taking up fixed pixels along the layout axis.
+     */
+    void add_spacer(float size);
+
+    /**
+     * @brief Clears all managed child widgets.
+     */
+    void clear();
+
+    // --- Queries ---
+
+    const Rect& bounds() const override { return m_bounds; }
+    LayoutOrientation orientation() const { return m_orientation; }
+    float spacing() const { return m_spacing; }
+    const Padding& padding() const { return m_padding; }
+    LayoutAlignment alignment() const { return m_alignment; }
+    size_t child_count() const { return m_children.size(); }
+    std::shared_ptr<IWidget> child_at(size_t index) const;
+
+    // --- Automatic Layout Pass ---
+
+    /**
+     * @brief Recalculates all children positions and dimensions according to spacing and alignment.
+     */
+    void update_layout();
+
+    // --- Widget Lifecycle ---
+
+    bool handle_mouse(const MouseEvent& ev) override;
+    void update(float dt) override;
+    void render(Renderer2D& renderer) override;
+
+private:
+    Rect m_bounds{0.0f, 0.0f, 0.0f, 0.0f};
+    LayoutOrientation m_orientation{LayoutOrientation::Vertical};
+    float m_spacing{8.0f};
+    Padding m_padding{0.0f};
+    LayoutAlignment m_alignment{LayoutAlignment::Start};
+    bool m_auto_size{true};
+    bool m_needs_layout{true};
+
+    std::vector<std::shared_ptr<IWidget>> m_children;
+};
+
+/**
+ * @brief Convenience vertical box container stacking child widgets top-to-bottom.
+ */
+class VBox : public Layout {
+public:
+    VBox(float x = 0.0f, float y = 0.0f, float spacing = 8.0f)
+        : Layout(LayoutOrientation::Vertical, x, y, spacing) {}
+
+    VBox(const Rect& bounds, float spacing = 8.0f)
+        : Layout(LayoutOrientation::Vertical, bounds.x, bounds.y, spacing) {
+        set_bounds(bounds);
+    }
+};
+
+/**
+ * @brief Convenience horizontal box container aligning child widgets left-to-right.
+ */
+class HBox : public Layout {
+public:
+    HBox(float x = 0.0f, float y = 0.0f, float spacing = 8.0f)
+        : Layout(LayoutOrientation::Horizontal, x, y, spacing) {}
+
+    HBox(const Rect& bounds, float spacing = 8.0f)
+        : Layout(LayoutOrientation::Horizontal, bounds.x, bounds.y, spacing) {
+        set_bounds(bounds);
+    }
+};
+
+} // namespace arin
+
+#endif // ARIN32_LAYOUT_HPP

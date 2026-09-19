@@ -31,18 +31,19 @@
 
 #include "types.hpp"
 #include "renderer.hpp"
+#include "widget.hpp"
 #include <algorithm>
 
 namespace arin {
 
 /**
- * @brief Operating modes for the ProgressBar widget.
+ * @brief Operating modes for modern progress bars.
  */
 enum class ProgressBarMode : uint8_t {
     /**
-     * @brief Quantified progress mode from 0% to 100% (or min to max range).
-     * The filled section grows proportionally and displays an animated white
-     * shimmer sweep highlight moving across the active progress.
+     * @brief Quantified progress mode (default: 0% to 100%).
+     * Shows current completion ratio and renders an active filled track with
+     * an animated, continuous soft-white shimmer sweep ("la cosita blanca que va avanzando").
      */
     Determinate,
 
@@ -109,13 +110,15 @@ struct ProgressBarStyle {
 };
 
 /**
- * @brief High-performance OpenGL progress bar with Determinate and Indeterminate modes.
+ * @brief Ultra-smooth, hardware-accelerated Windows 10 style Progress Bar widget.
+ *
+ * Supports both Determinate (0% - 100%) and Indeterminate (traveling marquee chunk) modes.
  *
  * Features:
- * - Ultra-simple, fluid builder API.
- * - Determinate mode (0% to 100%) with animated white shimmer sweep ("la cosita blanca").
- * - Indeterminate mode with smooth continuous traveling chunk ("un cachito").
- * - 100% GPU-accelerated with Signed Distance Fields (SDF) and screen-space derivative anti-aliasing.
+ * - Anti-aliased signed distance field rounded track and fill.
+ * - Hardware cosine shimmer highlight wave sweeping continuously across determinate fill.
+ * - Traveling accent chunk ("un cachito que va de izquierda a derecha") for indeterminate progress.
+ * - Fluid chaining API and range mapping.
  *
  * Example:
  * @code
@@ -123,7 +126,7 @@ struct ProgressBarStyle {
  * pbar->set_value(65.0f); // 65%
  * @endcode
  */
-class ProgressBar {
+class ProgressBar : public IWidget {
 public:
     /**
      * @brief Constructs a default 260x20 progress bar at (0, 0).
@@ -203,7 +206,7 @@ public:
      * @param bounds Bounding box.
      * @return Reference to this for chaining.
      */
-    ProgressBar& set_bounds(const Rect& bounds);
+    ProgressBar& set_bounds(const Rect& bounds) override;
 
     /**
      * @brief Sets bounding rectangle with scalar coordinates.
@@ -215,13 +218,13 @@ public:
      * @brief Sets screen position.
      * @return Reference to this for chaining.
      */
-    ProgressBar& set_position(float x, float y);
+    ProgressBar& set_position(float x, float y) override;
 
     /**
      * @brief Sets dimensions.
      * @return Reference to this for chaining.
      */
-    ProgressBar& set_size(float width, float height);
+    ProgressBar& set_size(float width, float height) override;
 
     /**
      * @brief Sets visual style configuration.
@@ -295,7 +298,7 @@ public:
     bool is_indeterminate() const { return m_mode == ProgressBarMode::Indeterminate; }
 
     /// @brief Gets bounding rectangle.
-    const Rect& bounds() const { return m_bounds; }
+    const Rect& bounds() const override { return m_bounds; }
 
     /// @brief Gets active visual style.
     const ProgressBarStyle& style() const { return m_style; }
@@ -307,13 +310,13 @@ public:
      * @brief Advances internal animation phase for shimmer / indeterminate sweeps.
      * @param dt Delta time in seconds elapsed since previous frame.
      */
-    void update(float dt);
+    void update(float dt) override;
 
     /**
      * @brief Renders the progress bar using the 2D OpenGL renderer.
      * @param renderer The 2D renderer to draw with.
      */
-    void render(Renderer2D& renderer);
+    void render(Renderer2D& renderer) override;
 
 private:
     Rect m_bounds{0.0f, 0.0f, 260.0f, 20.0f};

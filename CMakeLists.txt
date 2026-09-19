@@ -31,6 +31,8 @@ add_library(arin32
     src/renderer/renderer.cpp
     src/button.cpp
     src/progress_bar.cpp
+    src/list_box.cpp
+    src/layout.cpp
     src/window.cpp
     src/app.cpp
 )
