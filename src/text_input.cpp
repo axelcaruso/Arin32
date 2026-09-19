@@ -77,6 +77,18 @@ void TextInput::on_focus(bool focused) {
     }
 }
 
+/**
+ * @brief Returns the padded inner rectangle where text is drawn and clipped.
+ */
+Rect TextInput::inner_rect() const {
+    // Step 1: Remove horizontal padding from both sides.
+    const float inner_x = m_bounds.x + m_style.padding_x;
+    const float inner_w = std::max(0.0f, m_bounds.width - 2.0f * m_style.padding_x);
+    // Step 2: Keep a minimal vertical inset so text never touches the border.
+    constexpr float kVerticalInset = 1.0f;
+    return Rect(inner_x, m_bounds.y + kVerticalInset, inner_w, std::max(0.0f, m_bounds.height - 2.0f * kVerticalInset));
+}
+
 void TextInput::reset_blink() {
     m_blink_timer = 0.0f;
     m_cursor_visible = true;
@@ -100,11 +112,13 @@ float TextInput::x_offset_from_index(size_t index, const Font& font) const {
 }
 
 size_t TextInput::index_from_x_offset(float local_x, const Font& font) const {
-    std::string disp = get_display_text();
+    // Step 1: Walk glyph advances and snap to the nearest glyph boundary.
+    // A click in the left half of a glyph selects its start, otherwise its end.
+    const std::string disp = get_display_text();
     float current_x = 0.0f;
     for (size_t i = 0; i < disp.size(); ++i) {
-        float adv = font.get_glyph(disp[i]).advance * m_style.text_scale;
-        if (local_x < current_x + adv * 0.5f) {
+        const float adv = font.get_glyph(disp[i]).advance * m_style.text_scale;
+        if (local_x < current_x + adv * detail::kHalf) {
             return i;
         }
         current_x += adv;
@@ -506,19 +520,19 @@ void TextInput::render(Renderer2D& renderer) {
         b_width
     );
 
-    // 3. Compute inner text bounding box and apply hardware scissor clipping
-    float inner_x = m_bounds.x + m_style.padding_x;
-    float inner_w = std::max(0.0f, m_bounds.width - 2.0f * m_style.padding_x);
-    Rect inner_rect(inner_x, m_bounds.y + 1.0f, inner_w, std::max(0.0f, m_bounds.height - 2.0f));
-
-    renderer.push_clip_rect(inner_rect);
+    // Step 3: Compute the padded inner rectangle and clip text to it.
+    const Rect text_clip_rect = inner_rect();
+    const float inner_x = text_clip_rect.x;
+    renderer.push_clip_rect(text_clip_rect);
 
     // 4. Ensure scrolling accommodates cursor position
     ensure_cursor_visible(renderer.font());
 
-    float origin_x = inner_x - m_scroll_offset;
-    float font_h = renderer.font().line_height() * m_style.text_scale;
-    float origin_y = m_bounds.y + (m_bounds.height - font_h) * 0.5f;
+    const float origin_x = inner_x - m_scroll_offset;
+    const float font_h = renderer.font().line_height() * m_style.text_scale;
+    // Step 4: Center the visible glyph mass with the shared font helper.
+    const Vec2 text_origin = renderer.font().layout_text_in_rect("Ag", m_bounds, m_style.text_scale, TextAlignH::Left, TextAlignV::Center);
+    const float origin_y = text_origin.y;
 
     // 5. Draw selection highlight box behind characters
     if (has_selection()) {
@@ -527,7 +541,9 @@ void TextInput::render(Renderer2D& renderer) {
 
         float sel_x1 = origin_x + x_offset_from_index(s1, renderer.font());
         float sel_x2 = origin_x + x_offset_from_index(s2, renderer.font());
-        Rect sel_rect(sel_x1, m_bounds.y + 4.0f, std::max(2.0f, sel_x2 - sel_x1), m_bounds.height - 8.0f);
+        constexpr float kSelectionInset = 4.0f;
+        constexpr float kMinimumSelectionWidth = 2.0f;
+        Rect sel_rect(sel_x1, m_bounds.y + kSelectionInset, std::max(kMinimumSelectionWidth, sel_x2 - sel_x1), m_bounds.height - 2.0f * kSelectionInset);
 
         renderer.draw_rounded_rect(sel_rect, 2.0f, m_style.selection_color);
     }

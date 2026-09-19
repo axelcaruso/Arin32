@@ -27,6 +27,7 @@
  */
 
 #include "arin/button.hpp"
+#include "arin/metrics.hpp"
 
 namespace arin {
 
@@ -34,13 +35,13 @@ namespace arin {
  * @brief Default constructor creating a standard 85x32 button.
  */
 Button::Button()
-    : m_text("Button"), m_bounds(0.0f, 0.0f, 85.0f, 32.0f), m_style(ButtonStyle::primary()) {}
+    : m_text("Button"), m_bounds(0.0f, 0.0f, UiMetrics::kDefaultButtonSize.x, UiMetrics::kDefaultButtonSize.y), m_style(ButtonStyle::primary()) {}
 
 /**
  * @brief Constructs a button with a given label.
  */
 Button::Button(std::string label)
-    : m_text(std::move(label)), m_bounds(0.0f, 0.0f, 85.0f, 32.0f), m_style(ButtonStyle::primary()) {}
+    : m_text(std::move(label)), m_bounds(0.0f, 0.0f, UiMetrics::kDefaultButtonSize.x, UiMetrics::kDefaultButtonSize.y), m_style(ButtonStyle::primary()) {}
 
 /**
  * @brief Constructs a button with explicit position and size.
@@ -209,12 +210,35 @@ Button& Button::set_icon(IconType icon, float size, float spacing) {
 }
 
 Button& Button::fit_to_text(const Font& font, float horizontal_padding) {
-    Vec2 size = font.measure_text(m_text, m_style.text_scale);
-    float extra_icon_w = (m_icon != IconType::None) ? (m_icon_size + (m_text.empty() ? 0.0f : m_icon_spacing)) : 0.0f;
-    m_bounds.width = size.x + extra_icon_w + horizontal_padding * 2.0f;
-    float content_h = std::max(size.y, (m_icon != IconType::None) ? m_icon_size : 0.0f);
-    m_bounds.height = std::max(m_bounds.height, content_h + m_style.padding.top + m_style.padding.bottom);
+    // Step 1: Measure content once through the shared helper.
+    const Vec2 content = content_size(font);
+    // Step 2: Expand by padding, enforcing a minimal clickable extent.
+    constexpr float kMinimumButtonExtent = 4.0f;
+    m_bounds.width = std::max(kMinimumButtonExtent, content.x + horizontal_padding * 2.0f);
+    m_bounds.height = std::max(m_bounds.height, content.y + m_style.padding.top + m_style.padding.bottom);
     return *this;
+}
+
+/**
+ * @brief Measures button content (icon plus label) without padding.
+ */
+Vec2 Button::content_size(const Font& font) const {
+    // Step 1: Measure the label at the configured text scale.
+    const Vec2 text_size = font.measure_text(m_text, m_style.text_scale);
+    // Step 2: Account for the optional leading icon and its spacing.
+    const float icon_width = (m_icon != IconType::None)
+        ? (m_icon_size + (m_text.empty() ? 0.0f : m_icon_spacing))
+        : 0.0f;
+    // Step 3: Content height is the tallest element (text, icon, or line height).
+    const float content_height = std::max({text_size.y, m_icon_size, font.line_height() * m_style.text_scale});
+    return Vec2(text_size.x + icon_width, content_height);
+}
+
+/**
+ * @brief Returns the content rectangle centered inside the button bounds.
+ */
+Rect Button::content_rect(const Font& font) const {
+    return m_bounds.centered(content_size(font));
 }
 
 Button& Button::ensure_containment(const Font& font) {
@@ -240,17 +264,18 @@ Button& Button::ensure_containment(const Font& font) {
  * @brief Renders the button with appropriate colors, guaranteed containment, and typography.
  */
 void Button::render(Renderer2D& renderer) {
-    // 1. Content-driven Sizing & Overflow Prevention Guarantee
-    // Text and icons can NEVER bleed outside the button boundary.
-    ensure_containment(renderer.font());
-
+    // Step 1: Measure content. Render never resizes bounds, so fixed layouts
+    // (SpaceBetween, dialogs, control rows) stay exactly as computed.
+    // Call fit_to_text() or ensure_containment() explicitly to grow a button.
     Vec2 text_size = renderer.font().measure_text(m_text, m_style.text_scale);
     float effective_scale = m_style.text_scale;
     float icon_w = (m_icon != IconType::None) ? (m_icon_size + (m_text.empty() ? 0.0f : m_icon_spacing)) : 0.0f;
     float total_content_w = text_size.x + icon_w;
 
-    if (!m_auto_resize) {
-        // If fixed dimensions were explicitly enforced, dynamically scale text down to fit
+    // Step 2: Shrink text to fit when the label exceeds the available width.
+    // This applies to both fixed-size and auto-size buttons, since render
+    // performs no layout growth anymore.
+    {
         float avail_w = m_bounds.width - m_style.padding.left - m_style.padding.right - icon_w;
         if (avail_w > 0.0f && text_size.x > avail_w) {
             effective_scale *= (avail_w / text_size.x);
@@ -311,30 +336,23 @@ void Button::render(Renderer2D& renderer) {
         m_style.border_width
     );
 
-    // Render button content (icon + text) with guaranteed containment
+    // Step 5: Render button content with shared optical centering and clipping.
+    // The whole icon-plus-label row is centered once, then text uses the same
+    // baseline-aware helper as every other widget.
     if (m_icon != IconType::None) {
-        float start_x = m_bounds.x + (m_bounds.width - total_content_w) * 0.5f;
-        float icon_y = m_bounds.y + (m_bounds.height - m_icon_size) * 0.5f;
-        renderer.draw_icon(m_icon, Rect(start_x, icon_y, m_icon_size, m_icon_size), text_color);
+        const float total_content_h = std::max(text_size.y, m_icon_size);
+        const Rect row_rect = m_bounds.centered(Vec2(total_content_w, total_content_h));
+        const Rect icon_rect = Rect(row_rect.x, m_bounds.centered(Vec2(m_icon_size, m_icon_size)).y, m_icon_size, m_icon_size);
+        renderer.draw_icon(m_icon, icon_rect, text_color);
 
         if (!m_text.empty()) {
-            float text_x = start_x + m_icon_size + m_icon_spacing;
-            Rect text_bounds(text_x, m_bounds.y, text_size.x, m_bounds.height);
-            renderer.draw_text_centered_clipped(
-                m_text,
-                text_bounds,
-                text_color,
-                effective_scale
-            );
+            const Rect text_bounds(row_rect.x + m_icon_size + m_icon_spacing, m_bounds.y, text_size.x, m_bounds.height);
+            renderer.push_clip_rect(m_bounds);
+            renderer.draw_text_in_rect(m_text, text_bounds, text_color, effective_scale, TextAlignH::Left, TextAlignV::Center);
+            renderer.pop_clip_rect();
         }
     } else {
-        // Render centered button label with guaranteed hardware scissor clipping
-        renderer.draw_text_centered_clipped(
-            m_text,
-            m_bounds,
-            text_color,
-            effective_scale
-        );
+        renderer.draw_text_centered_clipped(m_text, m_bounds, text_color, effective_scale);
     }
 }
 

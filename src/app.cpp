@@ -27,6 +27,7 @@
  */
 
 #include "arin/app.hpp"
+#include "arin/metrics.hpp"
 #include <iostream>
 #include <chrono>
 
@@ -97,7 +98,7 @@ App::App(const std::string& title, int width, int height)
                 // When cursor is inside a top widget, ensure all other widgets unhover
                 if (ev.type == MouseEventType::Move) {
                     MouseEvent offscreen_ev = ev;
-                    offscreen_ev.position = Vec2(-99999.0f, -99999.0f);
+                    offscreen_ev.position = Vec2(UiMetrics::kOffscreenCoordinate, UiMetrics::kOffscreenCoordinate);
                     for (auto& other : m_widgets) {
                         if (other != *it) {
                             other->handle_mouse(offscreen_ev);
@@ -285,18 +286,25 @@ std::shared_ptr<CheckBox> App::add_checkbox(
     bool checked
 ) {
     auto cb = std::make_shared<CheckBox>(label, x, y, checked);
+    cb->fit_to_content(m_renderer.font());
     m_widgets.push_back(cb);
     return cb;
 }
 
 std::shared_ptr<CheckBox> App::add_checkbox(CheckBox checkbox) {
     auto cb = std::make_shared<CheckBox>(std::move(checkbox));
+    if (cb->is_auto_resize()) {
+        cb->fit_to_content(m_renderer.font());
+    }
     m_widgets.push_back(cb);
     return cb;
 }
 
 std::shared_ptr<CheckBox> App::add_checkbox(std::shared_ptr<CheckBox> checkbox) {
     if (checkbox) {
+        if (checkbox->is_auto_resize()) {
+            checkbox->fit_to_content(m_renderer.font());
+        }
         m_widgets.push_back(checkbox);
     }
     return checkbox;
@@ -351,8 +359,10 @@ void App::show_context_menu(std::shared_ptr<ContextMenu> menu, float x, float y)
     }
     m_active_context_menu = menu;
     if (m_active_context_menu) {
-        Vec2 fb = m_window.framebuffer_size();
-        m_active_context_menu->show(x, y, fb.x, fb.y);
+        // Measure with the live renderer font so the popup width matches the
+        // typography actually drawn on screen.
+        const Vec2 fb = m_window.framebuffer_size();
+        m_active_context_menu->show(x, y, m_renderer.font(), fb.x, fb.y);
     }
 }
 
@@ -421,8 +431,8 @@ void App::run() {
         last_time = current_time;
 
         // Clamp delta time against large pauses or window moves
-        if (dt > 0.1f) {
-            dt = 0.1f;
+        if (dt > UiMetrics::kMaxFrameDeltaTime) {
+            dt = UiMetrics::kMaxFrameDeltaTime;
         }
 
         // 1. Process OS window and input events

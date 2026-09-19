@@ -37,6 +37,21 @@
 namespace arin {
 
 /**
+ * @brief Shared floating point comparison tolerances used across geometry types.
+ *
+ * Centralizing these values keeps equality checks consistent and removes
+ * duplicated magic epsilon literals from comparison operators.
+ */
+namespace detail {
+/// @brief Tolerance used for position and size comparisons (pixels).
+constexpr float kGeometryEpsilon = 1e-5f;
+/// @brief Tolerance used for color channel comparisons (normalized units).
+constexpr float kColorEpsilon = 1e-4f;
+/// @brief Factor that converts a full extent into a half extent (centering).
+constexpr float kHalf = 0.5f;
+} // namespace detail
+
+/**
  * @brief Represents a two-dimensional floating-point vector or point in 2D space.
  *
  * In Arin32, the standard window coordinate system has its origin (0, 0)
@@ -71,7 +86,7 @@ struct Vec2 {
     Vec2& operator/=(float scalar) { x /= scalar; y /= scalar; return *this; }
 
     constexpr bool operator==(const Vec2& rhs) const {
-        return std::abs(x - rhs.x) < 1e-5f && std::abs(y - rhs.y) < 1e-5f;
+        return std::abs(x - rhs.x) < detail::kGeometryEpsilon && std::abs(y - rhs.y) < detail::kGeometryEpsilon;
     }
 
     constexpr bool operator!=(const Vec2& rhs) const {
@@ -99,6 +114,8 @@ struct Vec2 {
         return Vec2(x + (other.x - x) * t, y + (other.y - y) * t);
     }
 };
+
+struct Padding;
 
 /**
  * @brief Represents an axis-aligned 2D rectangle in screen space.
@@ -153,7 +170,25 @@ struct Rect {
     constexpr float bottom() const { return y + height; }
 
     /// @brief Center point of the rectangle.
-    constexpr Vec2 center() const { return Vec2(x + width * 0.5f, y + height * 0.5f); }
+    constexpr Vec2 center() const { return Vec2(x + width * detail::kHalf, y + height * detail::kHalf); }
+
+    /**
+     * @brief Returns a rectangle with the requested size centered inside this rectangle.
+     * @param content_size Desired inner width and height.
+     * @return Centered rectangle, possibly extending outside when larger than this rectangle.
+     */
+    constexpr Rect centered(const Vec2& content_size) const {
+        return Rect(
+            x + (width - content_size.x) * detail::kHalf,
+            y + (height - content_size.y) * detail::kHalf,
+            content_size.x,
+            content_size.y
+        );
+    }
+
+    Rect inset(const Padding& padding) const;
+
+    Rect shrunk(float margin) const;
 
     /**
      * @brief Checks if a given 2D point lies within this rectangle.
@@ -189,10 +224,10 @@ struct Rect {
     }
 
     constexpr bool operator==(const Rect& rhs) const {
-        return std::abs(x - rhs.x) < 1e-5f &&
-               std::abs(y - rhs.y) < 1e-5f &&
-               std::abs(width - rhs.width) < 1e-5f &&
-               std::abs(height - rhs.height) < 1e-5f;
+        return std::abs(x - rhs.x) < detail::kGeometryEpsilon &&
+               std::abs(y - rhs.y) < detail::kGeometryEpsilon &&
+               std::abs(width - rhs.width) < detail::kGeometryEpsilon &&
+               std::abs(height - rhs.height) < detail::kGeometryEpsilon;
     }
 
     constexpr bool operator!=(const Rect& rhs) const {
@@ -296,10 +331,10 @@ struct Color {
     }
 
     constexpr bool operator==(const Color& rhs) const {
-        return std::abs(r - rhs.r) < 1e-4f &&
-               std::abs(g - rhs.g) < 1e-4f &&
-               std::abs(b - rhs.b) < 1e-4f &&
-               std::abs(a - rhs.a) < 1e-4f;
+        return std::abs(r - rhs.r) < detail::kColorEpsilon &&
+               std::abs(g - rhs.g) < detail::kColorEpsilon &&
+               std::abs(b - rhs.b) < detail::kColorEpsilon &&
+               std::abs(a - rhs.a) < detail::kColorEpsilon;
     }
 
     constexpr bool operator!=(const Color& rhs) const {
@@ -341,16 +376,47 @@ struct Padding {
         : left(in_left), top(in_top), right(in_right), bottom(in_bottom) {}
 
     constexpr bool operator==(const Padding& rhs) const {
-        return std::abs(left - rhs.left) < 1e-5f &&
-               std::abs(top - rhs.top) < 1e-5f &&
-               std::abs(right - rhs.right) < 1e-5f &&
-               std::abs(bottom - rhs.bottom) < 1e-5f;
+        return std::abs(left - rhs.left) < detail::kGeometryEpsilon &&
+               std::abs(top - rhs.top) < detail::kGeometryEpsilon &&
+               std::abs(right - rhs.right) < detail::kGeometryEpsilon &&
+               std::abs(bottom - rhs.bottom) < detail::kGeometryEpsilon;
     }
 
     constexpr bool operator!=(const Padding& rhs) const {
         return !(*this == rhs);
     }
 };
+
+inline Rect Rect::inset(const Padding& padding) const {
+    const float inner_x = x + padding.left;
+    const float inner_y = y + padding.top;
+    const float inner_w = width - padding.left - padding.right;
+    const float inner_h = height - padding.top - padding.bottom;
+    return Rect(inner_x, inner_y, inner_w > 0.0f ? inner_w : 0.0f, inner_h > 0.0f ? inner_h : 0.0f);
+}
+
+inline Rect Rect::shrunk(float margin) const {
+    return inset(Padding(margin));
+}
+
+/**
+ * @brief Shared named colors used across default widget styles.
+ *
+ * Grouping these values documents the palette in one place and avoids
+ * repeating raw hexadecimal literals in every style factory.
+ */
+namespace palette {
+/// @brief Primary Windows-style accent blue used for default buttons and selections.
+constexpr uint32_t kAccentBlue = 0x0067C0;
+/// @brief Hover variation of the primary accent blue.
+constexpr uint32_t kAccentBlueHover = 0x1975C5;
+/// @brief Pressed variation of the primary accent blue.
+constexpr uint32_t kAccentBlueActive = 0x005FB8;
+/// @brief Windows-style progress green used by determinate progress bars.
+constexpr uint32_t kProgressGreen = 0x06B025;
+/// @brief Neutral light demo canvas color.
+constexpr uint32_t kCanvasLight = 0xECEFF1;
+} // namespace palette
 
 } // namespace arin
 

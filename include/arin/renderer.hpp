@@ -30,6 +30,7 @@
 #define ARIN32_RENDERER_HPP
 
 #include "types.hpp"
+#include "metrics.hpp"
 #include "font.hpp"
 #include <string>
 #include <memory>
@@ -189,7 +190,9 @@ public:
     /**
      * @brief Renders text centered horizontally and vertically within a bounding rectangle.
      *
-     * Automatically computes text geometry via Font::measure_text() and aligns it.
+     * Vertical placement uses optical font metrics so the visible glyph mass is
+     * centered instead of the full line box. This is the preferred helper for
+     * button labels, list rows, and menu entries.
      *
      * @param text Text string to center.
      * @param bounds Bounding rectangle to center inside (e.g. Button bounds).
@@ -201,6 +204,25 @@ public:
         const Rect& bounds,
         const Color& color,
         float scale = 1.0f
+    );
+
+    /**
+     * @brief Renders aligned text inside a rectangle with optical vertical centering.
+     *
+     * @param text Text string to render.
+     * @param bounds Destination rectangle.
+     * @param color Text color.
+     * @param scale Text scale multiplier.
+     * @param align_h Horizontal alignment policy.
+     * @param align_v Vertical alignment policy.
+     */
+    void draw_text_in_rect(
+        const std::string& text,
+        const Rect& bounds,
+        const Color& color,
+        float scale = 1.0f,
+        TextAlignH align_h = TextAlignH::Center,
+        TextAlignV align_v = TextAlignV::Center
     );
 
     /**

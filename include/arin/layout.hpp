@@ -30,6 +30,7 @@
 #define ARIN32_LAYOUT_HPP
 
 #include "types.hpp"
+#include "metrics.hpp"
 #include "widget.hpp"
 #include "button.hpp"
 #include "progress_bar.hpp"
@@ -144,7 +145,7 @@ public:
      */
     std::shared_ptr<Button> add_button(
         const std::string& label,
-        float width = 85.0f,
+        float width = UiMetrics::kDefaultButtonSize.x,
         float height = 32.0f
     );
 
@@ -152,7 +153,7 @@ public:
      * @brief Creates and appends a ProgressBar to the layout.
      */
     std::shared_ptr<ProgressBar> add_progress_bar(
-        float width = 260.0f,
+        float width = UiMetrics::kDefaultProgressBarSize.x,
         float height = 18.0f,
         float value = 0.0f
     );
@@ -161,8 +162,8 @@ public:
      * @brief Creates and appends a ListBox to the layout.
      */
     std::shared_ptr<ListBox> add_list_box(
-        float width = 220.0f,
-        float height = 180.0f,
+        float width = UiMetrics::kDefaultListBoxSize.x,
+        float height = UiMetrics::kDefaultListBoxSize.y,
         ListBoxMode mode = ListBoxMode::Standard
     );
 
@@ -170,8 +171,8 @@ public:
      * @brief Creates and appends a CheckListBox to the layout.
      */
     std::shared_ptr<CheckListBox> add_check_list_box(
-        float width = 220.0f,
-        float height = 180.0f
+        float width = UiMetrics::kDefaultListBoxSize.x,
+        float height = UiMetrics::kDefaultListBoxSize.y
     );
 
     /**
@@ -210,6 +211,11 @@ public:
      * @brief Recalculates all children positions and dimensions according to spacing and alignment.
      */
     void update_layout();
+
+    /**
+     * @brief Clears hover state on all children without synthetic coordinates.
+     */
+    void clear_hover();
 
     // --- Widget Lifecycle ---
 

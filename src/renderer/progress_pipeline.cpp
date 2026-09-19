@@ -92,7 +92,7 @@ void main() {
     vec4 out_color;
 
     if (u_is_indeterminate == 1) {
-        // Indeterminate mode: traveling chunk ("un cachito") gliding smoothly left to right
+        // Indeterminate mode: traveling chunk gliding smoothly left to right
         float chunk_w = max(u_rect.z * 0.32, 40.0);
         float travel = u_rect.z + chunk_w * 2.0;
         float cycle = fract(u_anim_phase);
@@ -100,7 +100,7 @@ void main() {
 
         float d_chunk = abs(v_frag_pos.x - current_center_x);
         if (d_chunk <= chunk_w * 0.5) {
-            // Inside traveling chunk: add smooth center highlight ("la cosita blanca")
+            // Inside traveling chunk: add smooth center highlight
             float highlight = cos((d_chunk / (chunk_w * 0.5)) * 1.5707963);
             out_color = mix(u_fill_color, vec4(1.0, 1.0, 1.0, 1.0), highlight * 0.35);
         } else {
@@ -113,7 +113,7 @@ void main() {
 
         if (v_frag_pos.x <= fill_end_x) {
             // Inside progress fill
-            // Animated white shimmer sweep ("la cosita blanca que va avanzando")
+            // Animated white shimmer sweep
             float shimmer_w = min(max(u_rect.z * 0.35, 45.0), 80.0);
             float cycle = fract(u_anim_phase);
             float shimmer_center_x = u_rect.x - shimmer_w * 0.5 + cycle * (fill_w + shimmer_w * 1.5);

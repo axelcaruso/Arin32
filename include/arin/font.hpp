@@ -30,6 +30,7 @@
 #define ARIN32_FONT_HPP
 
 #include "types.hpp"
+#include "metrics.hpp"
 #include <string>
 #include <cstdint>
 
@@ -110,6 +111,40 @@ public:
      * @brief Base font line height in pixels at scale 1.0.
      */
     float line_height() const;
+
+    /**
+     * @brief Returns the vertical offset from the top of the line box to the text baseline.
+     *
+     * The embedded atlas stores glyphs with a fixed ascent proportion. Exposing
+     * that proportion lets widgets center text optically instead of using the
+     * full line height, which would otherwise leave labels looking low.
+     *
+     * @param scale Text scale multiplier.
+     * @return Baseline distance in pixels from the top of the line box.
+     */
+    float baseline_offset(float scale = 1.0f) const;
+
+    /**
+     * @brief Computes the top-left drawing origin that centers text in a rectangle.
+     *
+     * Horizontal placement follows the requested alignment. Vertical placement
+     * uses the baseline offset so the visible glyph mass is centered rather
+     * than the full line box.
+     *
+     * @param text String to place.
+     * @param bounds Destination rectangle.
+     * @param scale Text scale multiplier.
+     * @param align_h Horizontal alignment policy.
+     * @param align_v Vertical alignment policy.
+     * @return Drawing origin in pixels.
+     */
+    Vec2 layout_text_in_rect(
+        const std::string& text,
+        const Rect& bounds,
+        float scale = 1.0f,
+        TextAlignH align_h = TextAlignH::Center,
+        TextAlignV align_v = TextAlignV::Center
+    ) const;
 
     /**
      * @brief Raw OpenGL texture object ID.

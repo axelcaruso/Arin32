@@ -167,4 +167,67 @@ float Font::line_height() const {
     return internal::FONT_LINE_HEIGHT;
 }
 
+/**
+ * @brief Returns the baseline offset used for optical vertical centering.
+ *
+ * The atlas glyph quads reserve generous line spacing. Measurements of the
+ * embedded Open Sans atlas show the visible cap height occupying roughly
+ * seventy percent of the reported line height, so centering the cap height
+ * keeps labels optically centered in buttons, rows, and inputs.
+ */
+float Font::baseline_offset(float scale) const {
+    constexpr float kAscentProportion = 0.35f;
+    return line_height() * kAscentProportion * scale;
+}
+
+/**
+ * @brief Computes the drawing origin for aligned text inside a rectangle.
+ */
+Vec2 Font::layout_text_in_rect(
+    const std::string& text,
+    const Rect& bounds,
+    float scale,
+    TextAlignH align_h,
+    TextAlignV align_v
+) const {
+    const Vec2 text_size = measure_text(text, scale);
+    float origin_x = bounds.x;
+    float origin_y = bounds.y;
+
+    // Step 1: Resolve the horizontal origin from the alignment policy.
+    switch (align_h) {
+        case TextAlignH::Left:
+            origin_x = bounds.x;
+            break;
+        case TextAlignH::Right:
+            origin_x = bounds.x + bounds.width - text_size.x;
+            break;
+        case TextAlignH::Center:
+        default:
+            origin_x = bounds.x + (bounds.width - text_size.x) * detail::kHalf;
+            break;
+    }
+
+    // Step 2: Resolve the vertical origin. Center uses the visible glyph mass
+    // rather than the full line box so text does not appear shifted down.
+    const float visible_height = text_size.y * 0.72f;
+    switch (align_v) {
+        case TextAlignV::Top:
+            origin_y = bounds.y;
+            break;
+        case TextAlignV::Bottom:
+            origin_y = bounds.y + bounds.height - text_size.y;
+            break;
+        case TextAlignV::Center:
+        default: {
+            const float centered_line_top = bounds.y + (bounds.height - text_size.y) * detail::kHalf;
+            const float optical_correction = (text_size.y - visible_height) * detail::kHalf;
+            origin_y = centered_line_top - optical_correction;
+            break;
+        }
+    }
+
+    return Vec2(origin_x, origin_y);
+}
+
 } // namespace arin

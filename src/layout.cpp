@@ -27,6 +27,7 @@
  */
 
 #include "arin/layout.hpp"
+#include "arin/metrics.hpp"
 #include <algorithm>
 #include <iostream>
 
@@ -423,8 +424,8 @@ LayoutValidationResult Layout::validate() const {
 
     // 2. Check for container boundary overflow
     if (!m_auto_size && (m_bounds.width > 0.0f || m_bounds.height > 0.0f)) {
-        float max_right = m_bounds.x + m_bounds.width - m_padding.right + 0.5f;
-        float max_bottom = m_bounds.y + m_bounds.height - m_padding.bottom + 0.5f;
+        float max_right = m_bounds.x + m_bounds.width - m_padding.right + UiMetrics::kValidationTolerance;
+        float max_bottom = m_bounds.y + m_bounds.height - m_padding.bottom + UiMetrics::kValidationTolerance;
 
         for (size_t i = 0; i < m_children.size(); ++i) {
             const Rect& b = m_children[i]->bounds();
@@ -454,6 +455,19 @@ LayoutValidationResult Layout::validate() const {
     return res;
 }
 
+/**
+ * @brief Clears hover state on all children without synthetic coordinates.
+ *
+ * Sends one out-of-bounds move event so buttons and rows release their hover
+ * visuals. This replaces ad-hoc magic coordinates at call sites.
+ */
+void Layout::clear_hover() {
+    const MouseEvent offscreen = MouseEvent::make_move(Vec2(UiMetrics::kOffscreenCoordinate, UiMetrics::kOffscreenCoordinate));
+    for (auto& child : m_children) {
+        child->handle_mouse(offscreen);
+    }
+}
+
 bool Layout::handle_mouse(const MouseEvent& ev) {
     if (m_needs_layout) {
         update_layout();
@@ -465,8 +479,9 @@ bool Layout::handle_mouse(const MouseEvent& ev) {
         if ((*it)->handle_mouse(ev)) {
             captured = true;
             if (ev.type == MouseEventType::Move) {
+                // Step 1: Release hover on siblings so only the top child stays highlighted.
                 MouseEvent offscreen_ev = ev;
-                offscreen_ev.position = Vec2(-99999.0f, -99999.0f);
+                offscreen_ev.position = Vec2(UiMetrics::kOffscreenCoordinate, UiMetrics::kOffscreenCoordinate);
                 for (auto& other : m_children) {
                     if (other != *it) {
                         other->handle_mouse(offscreen_ev);

@@ -27,6 +27,7 @@
  */
 
 #include "arin/context_menu.hpp"
+#include "arin/metrics.hpp"
 #include "arin/font.hpp"
 #include <algorithm>
 
@@ -87,11 +88,11 @@ void ContextMenu::calculate_dimensions(const Font& font) {
             if (item.icon != IconType::None) {
                 has_any_icons = true;
             }
-            Vec2 lbl_sz = font.measure_text(item.label, 0.88f);
+            Vec2 lbl_sz = font.measure_text(item.label, m_style.label_scale);
             max_label_w = std::max(max_label_w, lbl_sz.x);
 
             if (!item.shortcut.empty()) {
-                Vec2 sc_sz = font.measure_text(item.shortcut, 0.82f);
+                Vec2 sc_sz = font.measure_text(item.shortcut, m_style.shortcut_scale);
                 max_shortcut_w = std::max(max_shortcut_w, sc_sz.x);
             }
         }
@@ -106,31 +107,54 @@ void ContextMenu::calculate_dimensions(const Font& font) {
     m_bounds.height = total_h;
 }
 
+/**
+ * @brief Returns the row rectangle for an item index (separator or action).
+ */
+Rect ContextMenu::row_rect_at(size_t index) const {
+    // Step 1: Walk previous rows to find the vertical offset.
+    float cursor_y = m_bounds.y + m_style.padding.top;
+    for (size_t i = 0; i < index && i < m_items.size(); ++i) {
+        cursor_y += m_items[i].is_separator ? m_style.separator_height : m_style.item_height;
+    }
+    // Step 2: Build the full-width row inside horizontal padding.
+    const float content_w = m_bounds.width - m_style.padding.left - m_style.padding.right;
+    const float row_h = (index < m_items.size() && m_items[index].is_separator)
+        ? m_style.separator_height
+        : m_style.item_height;
+    return Rect(m_bounds.x + m_style.padding.left, cursor_y, content_w, row_h);
+}
+
 void ContextMenu::show(float x, float y, float screen_width, float screen_height) {
+    // Step 1: Compatibility path uses a neutral scale for measurement.
+    // Prefer the font-aware overload whenever the renderer font is available.
+    show(x, y, Font(), screen_width, screen_height);
+}
+
+void ContextMenu::show(float x, float y, const Font& font, float screen_width, float screen_height) {
     m_visible = true;
     m_hovered_index = -1;
     m_screen_w = screen_width;
     m_screen_h = screen_height;
 
-    Font font;
+    // Step 2: Measure with real font metrics when available.
     calculate_dimensions(font);
 
-    // Screen boundary clamping so menu never pops outside visible window surface
+    // Step 3: Clamp the popup so it never leaves the visible window surface.
     if (screen_width > 0.0f) {
-        if (x + m_bounds.width > screen_width - 4.0f) {
-            x = screen_width - m_bounds.width - 4.0f;
+        if (x + m_bounds.width > screen_width - UiMetrics::kMenuScreenMargin) {
+            x = screen_width - m_bounds.width - UiMetrics::kMenuScreenMargin;
         }
-        if (x < 4.0f) {
-            x = 4.0f;
+        if (x < UiMetrics::kMenuScreenMargin) {
+            x = UiMetrics::kMenuScreenMargin;
         }
     }
 
     if (screen_height > 0.0f) {
-        if (y + m_bounds.height > screen_height - 4.0f) {
-            y = screen_height - m_bounds.height - 4.0f;
+        if (y + m_bounds.height > screen_height - UiMetrics::kMenuScreenMargin) {
+            y = screen_height - m_bounds.height - UiMetrics::kMenuScreenMargin;
         }
-        if (y < 4.0f) {
-            y = 4.0f;
+        if (y < UiMetrics::kMenuScreenMargin) {
+            y = UiMetrics::kMenuScreenMargin;
         }
     }
 
@@ -259,10 +283,10 @@ void ContextMenu::render(Renderer2D& renderer) {
         const auto& item = m_items[i];
 
         if (item.is_separator) {
-            // Subtle 1px separator rule
-            float line_y = cur_y + m_style.separator_height * 0.5f;
+            // Step 3a: Draw the subtle separator rule with shared insets.
+            const float line_y = cur_y + m_style.separator_height * detail::kHalf;
             renderer.draw_rect(
-                Rect(m_bounds.x + 8.0f, line_y, m_bounds.width - 16.0f, 1.0f),
+                Rect(m_bounds.x + UiMetrics::kMenuSeparatorInset, line_y, m_bounds.width - 2.0f * UiMetrics::kMenuSeparatorInset, UiMetrics::kMenuSeparatorThickness),
                 m_style.separator_color
             );
             cur_y += m_style.separator_height;
@@ -276,7 +300,7 @@ void ContextMenu::render(Renderer2D& renderer) {
 
             if (is_hovered) {
                 // Accent Blue selection highlight
-                renderer.draw_rounded_rect(item_rect, 3.5f, m_style.hover_color);
+                renderer.draw_rounded_rect(item_rect, UiMetrics::kMenuItemCornerRadius, m_style.hover_color);
                 text_col = m_style.hover_text_color;
                 icon_col = m_style.icon_hover_color;
                 sc_col   = m_style.shortcut_hover_color;
@@ -286,24 +310,25 @@ void ContextMenu::render(Renderer2D& renderer) {
                 sc_col   = item.enabled ? m_style.shortcut_color : m_style.text_disabled_color;
             }
 
-            // Optional Vector Icon
+            // Step 3b: Draw the optional vector icon centered in its column.
             if (item.icon != IconType::None) {
-                float icon_sz = 14.0f;
-                float icon_x = item_rect.x + 6.0f;
-                float icon_y = item_rect.y + (item_rect.height - icon_sz) * 0.5f;
-                renderer.draw_icon(item.icon, Rect(icon_x, icon_y, icon_sz, icon_sz), icon_col);
+                const float icon_sz = m_style.icon_size;
+                const float icon_x = item_rect.x + UiMetrics::kMenuIconInset;
+                const Rect icon_bounds = item_rect.centered(Vec2(icon_sz, icon_sz));
+                renderer.draw_icon(item.icon, Rect(icon_x, icon_bounds.y, icon_sz, icon_sz), icon_col);
             }
 
-            // Action Label
-            float text_x = item_rect.x + (has_any_icons ? 26.0f : 8.0f);
-            float text_y = item_rect.y + 6.0f;
-            renderer.draw_text(item.label, Vec2(text_x, text_y), text_col, 0.88f);
+            // Step 3c: Draw the label with optical vertical centering.
+            const float text_x = item_rect.x + (has_any_icons ? m_style.icon_column_width : UiMetrics::kMenuTextInsetNoIcon);
+            const Rect label_bounds(text_x, item_rect.y, item_rect.right() - text_x, item_rect.height);
+            renderer.draw_text_in_rect(item.label, label_bounds, text_col, m_style.label_scale, TextAlignH::Left, TextAlignV::Center);
 
-            // Optional Shortcut Text
+            // Step 3d: Draw the optional shortcut right-aligned with the same centering.
             if (!item.shortcut.empty()) {
-                Vec2 sc_sz = renderer.font().measure_text(item.shortcut, 0.80f);
-                float sc_x = item_rect.right() - sc_sz.x - 8.0f;
-                renderer.draw_text(item.shortcut, Vec2(sc_x, item_rect.y + 6.0f), sc_col, 0.80f);
+                const Vec2 sc_sz = renderer.font().measure_text(item.shortcut, m_style.shortcut_scale);
+                const float sc_x = item_rect.right() - sc_sz.x - UiMetrics::kMenuShortcutTrailingInset;
+                const Rect shortcut_bounds(sc_x, item_rect.y, sc_sz.x, item_rect.height);
+                renderer.draw_text_in_rect(item.shortcut, shortcut_bounds, sc_col, m_style.shortcut_scale, TextAlignH::Left, TextAlignV::Center);
             }
 
             cur_y += m_style.item_height;

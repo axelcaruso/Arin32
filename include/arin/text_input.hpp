@@ -30,6 +30,7 @@
 #define ARIN32_TEXT_INPUT_HPP
 
 #include "types.hpp"
+#include "metrics.hpp"
 #include "widget.hpp"
 #include "renderer.hpp"
 #include "input.hpp"
@@ -46,7 +47,7 @@ struct TextInputStyle {
     float border_width{1.0f};                       ///< Standard border thickness
     float focus_border_width{2.0f};                 ///< Border thickness when keyboard focused
     float padding_x{10.0f};                         ///< Horizontal internal padding from box edge
-    float text_scale{0.92f};                        ///< Typography scale factor
+    float text_scale{UiMetrics::kSmallLabelScale};                        ///< Typography scale factor
     float cursor_width{1.5f};                       ///< Width of the blinking insertion caret
     float blink_interval{0.5f};                     ///< Caret blink cycle duration in seconds
 
@@ -54,7 +55,7 @@ struct TextInputStyle {
     Color disabled_background{Color::from_hex(0xF3F4F6)};///< Fill color when disabled
     Color border_color{Color::from_hex(0xD1D5DB)};  ///< Inactive subtle border color
     Color hover_border_color{Color::from_hex(0x9CA3AF)};///< Border color when cursor hovers
-    Color focus_border_color{Color::from_hex(0x0067C0)};///< Windows 10 Accent Blue focus stroke
+    Color focus_border_color{Color::from_hex(palette::kAccentBlue)};///< Windows 10 Accent Blue focus stroke
     Color text_color{Color::from_hex(0x111827)};    ///< Normal user input text color
     Color disabled_text_color{Color::from_hex(0x9CA3AF)};///< Text color when disabled
     Color placeholder_color{Color::from_hex(0x9CA3AF)};///< Hint text color when empty
@@ -96,7 +97,7 @@ public:
         std::string initial_text = "",
         float x = 0.0f,
         float y = 0.0f,
-        float width = 200.0f,
+        float width = UiMetrics::kDefaultTextInputSize.x,
         float height = 32.0f
     );
 
@@ -155,6 +156,9 @@ public:
 
     /// @brief Moves insertion cursor to the specified index.
     TextInput& set_cursor_position(size_t pos);
+
+    /// @brief Returns the padded inner rectangle where text is drawn and clipped.
+    Rect inner_rect() const;
 
     /// @brief Checks if there is an active text selection.
     bool has_selection() const { return m_has_selection && m_sel_start != m_sel_end; }
@@ -248,7 +252,7 @@ private:
 
     std::string m_text;
     std::string m_placeholder{"Enter text..."};
-    Rect m_bounds{0.0f, 0.0f, 200.0f, 32.0f};
+    Rect m_bounds{0.0f, 0.0f, UiMetrics::kDefaultTextInputSize.x, UiMetrics::kDefaultTextInputSize.y};
 
     size_t m_cursor_pos{0};
     size_t m_sel_start{0};

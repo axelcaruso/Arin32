@@ -30,6 +30,7 @@
 #define ARIN32_ICON_HPP
 
 #include "types.hpp"
+#include "metrics.hpp"
 #include "widget.hpp"
 #include "renderer.hpp"
 #include <cstdint>
@@ -91,7 +92,7 @@ public:
         IconType type = IconType::None,
         float x = 0.0f,
         float y = 0.0f,
-        float size = 16.0f,
+        float size = UiMetrics::kDefaultIconSize,
         const Color& color = Color(240, 240, 240)
     );
 
@@ -157,7 +158,7 @@ public:
     }
 
 private:
-    Rect m_bounds{0.0f, 0.0f, 16.0f, 16.0f};
+    Rect m_bounds{0.0f, 0.0f, UiMetrics::kDefaultIconSize, UiMetrics::kDefaultIconSize};
     IconType m_type{IconType::None};
     Color m_color{240, 240, 240};
     bool m_visible{true};

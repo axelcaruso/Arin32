@@ -30,6 +30,7 @@
 #define ARIN32_CHECKBOX_HPP
 
 #include "types.hpp"
+#include "metrics.hpp"
 #include "widget.hpp"
 #include "renderer.hpp"
 #include <string>
@@ -41,13 +42,13 @@ namespace arin {
  * @brief Visual styling configuration for the CheckBox widget.
  */
 struct CheckBoxStyle {
-    float box_size{16.0f};                      ///< Width and height of the checkable square in pixels
+    float box_size{UiMetrics::kListCheckBoxSize};                      ///< Width and height of the checkable square in pixels
     float corner_radius{3.0f};                 ///< Corner rounding radius of the square box
     float text_spacing{8.0f};                  ///< Gap between the checkbox square and its label text
-    float text_scale{0.92f};                   ///< Typography scale factor
+    float text_scale{UiMetrics::kSmallLabelScale};                   ///< Typography scale factor
     Color box_background{Color::white()};      ///< Fill color when unchecked
     Color box_border{Color::from_hex(0x9CA3AF)};///< Border color when unchecked
-    Color checked_fill{Color::from_hex(0x0067C0)};///< Accent fill color when checked
+    Color checked_fill{Color::from_hex(palette::kAccentBlue)};///< Accent fill color when checked
     Color checkmark_color{Color::white()};     ///< Stroke color of the internal checkmark
     Color text_color{Color::from_hex(0x1F2937)};///< Label text color
     Color hover_border{Color::from_hex(0x4B5563)};///< Border outline highlight when hovered
@@ -88,22 +89,9 @@ public:
 
     const Rect& bounds() const override { return m_bounds; }
 
-    CheckBox& set_bounds(const Rect& bounds) override {
-        m_bounds = bounds;
-        return *this;
-    }
-
-    CheckBox& set_position(float x, float y) override {
-        m_bounds.x = x;
-        m_bounds.y = y;
-        return *this;
-    }
-
-    CheckBox& set_size(float width, float height) override {
-        m_bounds.width = width;
-        m_bounds.height = height;
-        return *this;
-    }
+    CheckBox& set_bounds(const Rect& bounds) override;
+    CheckBox& set_position(float x, float y) override;
+    CheckBox& set_size(float width, float height) override;
 
     bool handle_mouse(const MouseEvent& ev) override;
     void update(float dt) override;
@@ -116,11 +104,8 @@ public:
     /// @brief Gets label text.
     const std::string& label() const { return m_label; }
 
-    /// @brief Sets label text.
-    CheckBox& set_label(std::string label) {
-        m_label = std::move(label);
-        return *this;
-    }
+    /// @brief Sets label text and refits bounds if auto_resize is enabled.
+    CheckBox& set_label(std::string label);
 
     /// @brief Checks whether the checkbox is checked.
     bool is_checked() const { return m_checked; }
@@ -137,11 +122,8 @@ public:
         return *this;
     }
 
-    /// @brief Sets active visual style.
-    CheckBox& set_style(const CheckBoxStyle& style) {
-        m_style = style;
-        return *this;
-    }
+    /// @brief Sets active visual style and refits bounds if auto_resize is enabled.
+    CheckBox& set_style(const CheckBoxStyle& style);
 
     /// @brief Gets active visual style.
     const CheckBoxStyle& style() const { return m_style; }
@@ -158,17 +140,30 @@ public:
         return *this;
     }
 
+    /// @brief Enables or disables automatic content sizing.
+    CheckBox& set_auto_resize(bool enable);
+
+    /// @brief Checks if automatic content sizing is enabled.
+    bool is_auto_resize() const { return m_auto_resize; }
+
+    /// @brief Automatically adjusts widget bounds to tightly fit the box and label using default embedded font metrics.
+    CheckBox& fit_to_content();
+
     /// @brief Automatically adjusts widget bounds to tightly fit the box and label.
     CheckBox& fit_to_content(const Font& font);
 
+    /// @brief Ensures checkbox bounds enclose its box and label if auto-resize is enabled.
+    CheckBox& ensure_containment(const Font& font);
+
 private:
     std::string m_label{"CheckBox"};
-    Rect m_bounds{0.0f, 0.0f, 160.0f, 20.0f};
+    Rect m_bounds{0.0f, 0.0f, UiMetrics::kDefaultCheckBoxSize.x, UiMetrics::kDefaultCheckBoxSize.y};
     bool m_checked{false};
     bool m_hovered{false};
     bool m_pressed{false};
     bool m_visible{true};
     bool m_enabled{true};
+    bool m_auto_resize{true};
 
     CheckBoxStyle m_style;
     ToggleCallback m_toggle_cb;

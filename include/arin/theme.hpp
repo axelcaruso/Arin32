@@ -29,6 +29,7 @@
 #ifndef ARIN32_THEME_HPP
 #define ARIN32_THEME_HPP
 
+#include "metrics.hpp"
 #include "types.hpp"
 
 namespace arin {
@@ -42,27 +43,30 @@ namespace arin {
  */
 struct ButtonStyle {
     // Background Colors
-    Color background_color{Color::from_hex(0x0067C0)};       ///< Default idle background (Exact Accent Blue from design reference)
-    Color hover_color{Color::from_hex(0x1975C5)};            ///< Background when cursor is over the button
-    Color active_color{Color::from_hex(0x005FB8)};           ///< Background when mouse button is held down
-    Color disabled_color{Color::from_hex(0xE5E7EB)};         ///< Background when button is disabled
+    Color background_color{Color::from_hex(palette::kAccentBlue)}; ///< Default idle background.
+    Color hover_color{Color::from_hex(palette::kAccentBlueHover)}; ///< Background when cursor is over the button.
+    Color active_color{Color::from_hex(palette::kAccentBlueActive)}; ///< Background while pressed.
+    Color disabled_color{Color::from_hex(0xE5E7EB)}; ///< Background when button is disabled.
 
     // Text Colors
-    Color text_color{Color::white()};                        ///< Label color in normal state
-    Color text_hover_color{Color::white()};                  ///< Label color in hover state
-    Color text_active_color{Color::from_hex(0xEEF2F6)};      ///< Label color in active state
-    Color text_disabled_color{Color::from_hex(0x9CA3AF)};    ///< Label color in disabled state
+    Color text_color{Color::white()};                        ///< Label color in normal state.
+    Color text_hover_color{Color::white()};                  ///< Label color in hover state.
+    Color text_active_color{Color::from_hex(0xEEF2F6)};      ///< Label color in active state.
+    Color text_disabled_color{Color::from_hex(0x9CA3AF)};    ///< Label color in disabled state.
 
     // Border Configuration
-    Color border_color{Color::transparent()};                ///< Idle border stroke color
-    Color border_hover_color{Color::transparent()};          ///< Hover border stroke color
-    Color border_active_color{Color::transparent()};         ///< Active border stroke color
-    float border_width{0.0f};                                ///< Border thickness in pixels (0.0 = no border, 1.0 = subtle border)
+    Color border_color{Color::transparent()};                ///< Idle border stroke color.
+    Color border_hover_color{Color::transparent()};          ///< Hover border stroke color.
+    Color border_active_color{Color::transparent()};         ///< Active border stroke color.
+    float border_width{0.0f};                                ///< Border thickness in pixels.
 
-    // Geometry & Typography - EXACT MATCH TO USER'S REFERENCE DESIGN
-    float corner_radius{4.5f};                               ///< Exact corner radius from reference photo (4.5px)
-    float text_scale{1.0f};                                  ///< Multiplier for font size (1.0 = standard)
-    Padding padding{14.0f, 6.0f};                            ///< Content margins (horizontal, vertical)
+    // Geometry and typography.
+    static constexpr float kCornerRadius = 4.5f; ///< Standard button corner radius.
+    static constexpr float kHorizontalPadding = 14.0f; ///< Standard horizontal content padding.
+    static constexpr float kVerticalPadding = 6.0f; ///< Standard vertical content padding.
+    float corner_radius{kCornerRadius}; ///< Corner radius in pixels.
+    float text_scale{UiMetrics::kButtonTextScale}; ///< Multiplier for font size.
+    Padding padding{kHorizontalPadding, kVerticalPadding}; ///< Content margins.
 
     // Shadow Configuration - Subtle modern soft elevation
     Color shadow_color{Color(0.0f, 0.0f, 0.0f, 0.06f)};      ///< Subtle drop shadow
@@ -70,39 +74,39 @@ struct ButtonStyle {
     float shadow_blur{2.0f};                                 ///< Drop shadow blur radius
 
     /**
-     * @brief Creates a Primary button style (exact match to "Save" button in reference photo).
+     * @brief Creates a Primary button style using the shared accent palette.
      */
     static ButtonStyle primary() {
         ButtonStyle s;
-        s.background_color    = Color::from_hex(0x0067C0); // Exact #0067C0 blue from reference photo
-        s.hover_color         = Color::from_hex(0x1975C5);
-        s.active_color        = Color::from_hex(0x005FB8);
+        s.background_color    = Color::from_hex(palette::kAccentBlue);
+        s.hover_color         = Color::from_hex(palette::kAccentBlueHover);
+        s.active_color        = Color::from_hex(palette::kAccentBlueActive);
         s.text_color          = Color::white();
         s.text_hover_color    = Color::white();
         s.text_active_color   = Color::from_hex(0xEEF2F6);
         s.border_width        = 0.0f;
-        s.corner_radius       = 4.5f;
+        s.corner_radius       = ButtonStyle::kCornerRadius;
         return s;
     }
 
     /**
-     * @brief Creates a Secondary button style (exact match to "Don't Save" and "Cancel" in reference photo).
+     * @brief Creates a Secondary button style with a light surface and subtle border.
      */
     static ButtonStyle secondary() {
         ButtonStyle s;
-        s.background_color    = Color::from_hex(0xFFFFFF); // Clean white surface
-        s.hover_color         = Color::from_hex(0xF4F4F5); // Light slate hover
-        s.active_color        = Color::from_hex(0xE4E4E7); // Pressed slate
+        s.background_color    = Color::from_hex(0xFFFFFF);
+        s.hover_color         = Color::from_hex(0xF4F4F5);
+        s.active_color        = Color::from_hex(0xE4E4E7);
         s.disabled_color      = Color::from_hex(0xF8FAFC);
-        s.text_color          = Color::from_hex(0x18181B); // Dark slate typography
+        s.text_color          = Color::from_hex(0x18181B);
         s.text_hover_color    = Color::from_hex(0x18181B);
         s.text_active_color   = Color::from_hex(0x18181B);
         s.text_disabled_color = Color::from_hex(0x94A3B8);
-        s.border_color        = Color::from_hex(0xD4D4D8); // 1px subtle boundary border
+        s.border_color        = Color::from_hex(0xD4D4D8);
         s.border_hover_color  = Color::from_hex(0xA1A1AA);
         s.border_active_color = Color::from_hex(0x71717A);
-        s.border_width        = 1.0f;                      // 1.0px border stroke
-        s.corner_radius       = 4.5f;                      // 4.5px curvature radius
+        s.border_width        = 1.0f;
+        s.corner_radius       = ButtonStyle::kCornerRadius;
         return s;
     }
 
@@ -116,7 +120,7 @@ struct ButtonStyle {
         s.active_color        = Color::from_hex(0x15803D);
         s.text_color          = Color::white();
         s.border_width        = 0.0f;
-        s.corner_radius       = 4.5f;
+        s.corner_radius       = ButtonStyle::kCornerRadius;
         return s;
     }
 
@@ -130,7 +134,7 @@ struct ButtonStyle {
         s.active_color        = Color::from_hex(0xB91C1C);
         s.text_color          = Color::white();
         s.border_width        = 0.0f;
-        s.corner_radius       = 4.5f;
+        s.corner_radius       = ButtonStyle::kCornerRadius;
         return s;
     }
 
@@ -138,7 +142,7 @@ struct ButtonStyle {
      * @brief Creates an Outline button style (transparent fill with sleek border).
      * @param accent_color The color for border and text.
      */
-    static ButtonStyle outline(Color accent_color = Color::from_hex(0x0067C0)) {
+    static ButtonStyle outline(Color accent_color = Color::from_hex(palette::kAccentBlue)) {
         ButtonStyle s;
         s.background_color    = Color::transparent();
         s.hover_color         = accent_color.with_alpha(0.10f);
@@ -149,7 +153,7 @@ struct ButtonStyle {
         s.border_hover_color  = accent_color;
         s.border_active_color = accent_color;
         s.border_width        = 1.0f;
-        s.corner_radius       = 4.5f;
+        s.corner_radius       = ButtonStyle::kCornerRadius;
         return s;
     }
 };

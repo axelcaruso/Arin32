@@ -27,12 +27,13 @@
  */
 
 #include "arin/progress_bar.hpp"
+#include "arin/metrics.hpp"
 #include <cmath>
 
 namespace arin {
 
 ProgressBar::ProgressBar()
-    : m_bounds(0.0f, 0.0f, 260.0f, 20.0f), m_mode(ProgressBarMode::Determinate) {}
+    : m_bounds(0.0f, 0.0f, UiMetrics::kDefaultProgressBarSize.x, UiMetrics::kDefaultProgressBarSize.y), m_mode(ProgressBarMode::Determinate) {}
 
 ProgressBar::ProgressBar(float x, float y, float width, float height)
     : m_bounds(x, y, width, height), m_mode(ProgressBarMode::Determinate) {}
@@ -128,7 +129,7 @@ float ProgressBar::percentage() const {
 void ProgressBar::update(float dt) {
     m_anim_phase += dt * m_style.animation_speed;
     // Keep phase bounded without precision loss
-    if (m_anim_phase > 10000.0f) {
+    if (m_anim_phase > UiMetrics::kProgressPhaseWrap) {
         m_anim_phase = std::fmod(m_anim_phase, 1.0f);
     }
 }

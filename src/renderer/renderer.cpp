@@ -252,7 +252,10 @@ void Renderer2D::draw_text(
 }
 
 /**
- * @brief Centers text within a bounding rectangle.
+ * @brief Centers text optically within a bounding rectangle.
+ *
+ * Delegates origin computation to Font::layout_text_in_rect so every widget
+ * shares the same baseline-aware vertical centering behavior.
  */
 void Renderer2D::draw_text_centered(
     const std::string& text,
@@ -260,10 +263,25 @@ void Renderer2D::draw_text_centered(
     const Color& color,
     float scale
 ) {
-    Vec2 text_size = m_font.measure_text(text, scale);
-    float text_x = bounds.x + (bounds.width - text_size.x) * 0.5f;
-    float text_y = bounds.y + (bounds.height - text_size.y) * 0.5f;
-    draw_text(text, Vec2(text_x, text_y), color, scale);
+    draw_text_in_rect(text, bounds, color, scale, TextAlignH::Center, TextAlignV::Center);
+}
+
+/**
+ * @brief Renders aligned text inside a rectangle with optical vertical centering.
+ */
+void Renderer2D::draw_text_in_rect(
+    const std::string& text,
+    const Rect& bounds,
+    const Color& color,
+    float scale,
+    TextAlignH align_h,
+    TextAlignV align_v
+) {
+    if (text.empty() || bounds.width <= 0.0f || bounds.height <= 0.0f) {
+        return;
+    }
+    const Vec2 origin = m_font.layout_text_in_rect(text, bounds, scale, align_h, align_v);
+    draw_text(text, origin, color, scale);
 }
 
 void Renderer2D::push_clip_rect(const Rect& rect) {

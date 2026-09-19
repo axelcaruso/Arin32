@@ -127,3 +127,49 @@ TEST(ArinCheckBoxTest, DisabledStateIgnoresMouse) {
     EXPECT_EQ(toggled, 0);
     EXPECT_FALSE(cb.is_checked());
 }
+
+TEST(ArinCheckBoxTest, AutomaticContentSizing) {
+    arin::CheckBox short_cb("OK", 0.0f, 0.0f);
+    arin::CheckBox long_cb("Upload your content to the cloud.", 0.0f, 0.0f);
+
+    EXPECT_GT(long_cb.bounds().width, short_cb.bounds().width);
+    EXPECT_GE(long_cb.bounds().height, 20.0f);
+
+    arin::Font font;
+    arin::Vec2 long_text_size = font.measure_text("Upload your content to the cloud.", long_cb.style().text_scale);
+    float expected_min_w = long_cb.style().box_size + long_cb.style().text_spacing + long_text_size.x;
+    EXPECT_GE(long_cb.bounds().width, expected_min_w);
+}
+
+TEST(ArinCheckBoxTest, DynamicLabelUpdatesAndAutoResize) {
+    arin::CheckBox cb("Short", 10.0f, 20.0f);
+    float initial_width = cb.bounds().width;
+
+    cb.set_label("A significantly longer label string that requires extra width");
+    EXPECT_GT(cb.bounds().width, initial_width);
+
+    // Explicit set_size disables auto_resize
+    cb.set_size(120.0f, 24.0f);
+    EXPECT_FALSE(cb.is_auto_resize());
+    EXPECT_FLOAT_EQ(cb.bounds().width, 120.0f);
+
+    cb.set_label("Even longer text but auto_resize is now false");
+    EXPECT_FLOAT_EQ(cb.bounds().width, 120.0f);
+
+    // Re-enabling auto_resize and fitting
+    cb.set_auto_resize(true).fit_to_content();
+    EXPECT_TRUE(cb.is_auto_resize());
+    EXPECT_GT(cb.bounds().width, 120.0f);
+}
+
+TEST(ArinCheckBoxTest, EnsureContainmentGrowsBounds) {
+    arin::CheckBox cb("Upload your content to the cloud.", 0.0f, 0.0f);
+    arin::Font font;
+
+    cb.set_auto_resize(true);
+    cb.ensure_containment(font);
+
+    arin::Vec2 text_size = font.measure_text(cb.label(), cb.style().text_scale);
+    float required_w = cb.style().box_size + cb.style().text_spacing + text_size.x;
+    EXPECT_GE(cb.bounds().width, required_w);
+}

@@ -76,7 +76,7 @@ Arin32 is architected from the ground up for **extreme ease of use**, **zero ext
 
 ### Key Highlights
 
-- **Absurdly Simple API**: Creating interactive buttons, styling them, and binding lambda event handlers takes under 5 lines of readable code.
+- **Concise API**: Creating interactive buttons, styling them, and binding lambda event handlers takes only a few lines of readable code.
 - **Embedded Font Engine**: Built-in 256x128 proportional typography atlas. Renders crisp, anti-aliased text labels with zero runtime filesystem or TTF file dependencies. Works in early kernel boot / barebones environments.
 - **GPU-Accelerated Signed Distance Field (SDF) Rendering**: Rounded corners and borders are rendered in fragment shaders using screen-space derivatives (`fwidth`), ensuring razor-sharp edges with zero jagged artifacts at any scale.
 - **Clean OS Abstraction**: Windowing and event polling are isolated behind `arin::IPlatformBackend`. On Linux and FreeBSD, GLFW is used. On a custom OS, implementing 8 virtual methods brings the entire GUI stack up.
@@ -341,8 +341,12 @@ A standalone, fully interactive two-state checkbox widget featuring crisp GPU-dr
 - `CheckBox& toggle()`: Inverts current check state.
 - `CheckBox& on_toggled(ToggleCallback cb)`: Registers callback `std::function<void(bool is_checked)>` fired whenever state toggles.
 - `const std::string& label() const`: Gets label text.
-- `CheckBox& set_label(std::string label)`: Sets label text.
-- `CheckBox& fit_to_content(const Font& font)`: Automatically resizes widget bounding box to tightly enclose square box and measured label text.
+- `CheckBox& set_label(std::string label)`: Sets label text and refits bounds if auto-resize is enabled.
+- `CheckBox& set_auto_resize(bool enable)`: Enables or disables automatic content-driven sizing (enabled by default).
+- `bool is_auto_resize() const`: Checks whether auto-resize is enabled.
+- `CheckBox& fit_to_content()`: Automatically resizes widget bounding box to tightly enclose square box and measured label text using default font metrics.
+- `CheckBox& fit_to_content(const Font& font)`: Automatically resizes widget bounding box to tightly enclose square box and measured label text using the specified font.
+- `CheckBox& ensure_containment(const Font& font)`: Expands bounding box if needed so text and box are fully contained.
 - `CheckBox& set_style(const CheckBoxStyle& style)`: Applies visual style configuration.
 - `CheckBox& set_enabled(bool enabled)`: Sets interactive state.
 - `CheckBox& set_visible(bool visible)`: Sets visibility.
@@ -414,9 +418,9 @@ A modern, hardware-accelerated progress bar widget designed to strictly match th
 
 #### Operating Modes (`ProgressBarMode`)
 - `ProgressBarMode::Determinate`:
-  Quantified progress mode (default: 0 to 100%). Renders an active fill segment proportional to current progress, traversed by an animated, continuous soft-white shimmer sweep ("la cosita blanca que va avanzando").
+  Quantified progress mode (default: 0 to 100%). Renders an active fill segment proportional to current progress, traversed by an animated, continuous soft-white shimmer sweep.
 - `ProgressBarMode::Indeterminate`:
-  Continuous activity / marquee mode with unknown duration. A smooth accent slice ("un cachito que va de izquierda a derecha") with a soft central specular highlight glides continuously across the track.
+  Continuous activity / marquee mode with unknown duration. A smooth accent slice with a soft central specular highlight glides continuously across the track.
 
 #### Constructors
 - `ProgressBar()`: Constructs default 260x20 progress bar at (0, 0).
@@ -683,6 +687,78 @@ Arin32 features a mathematically defined vector icon system. Icons are rendered 
 
 ---
 
+### 4.12a Shared Geometry, Metrics, and Text Alignment
+
+All widgets share the same centering and spacing foundation. Custom code should
+prefer these helpers instead of manual `* 0.5f` arithmetic or literal offsets.
+
+- `arin::Rect::centered(Vec2 size)`: returns a rectangle of the requested size
+  centered inside the current rectangle. Used for icons, checkbox squares, and
+  button content rows.
+- `arin::Rect::inset(Padding)` and `Rect::shrunk(margin)`: remove padding from
+  every edge with clamping to a non-negative size. Used for content clipping.
+- `arin::UiMetrics`: named defaults for widget sizes, menu and list geometry,
+  label scales, and behavior limits (`kMaxFrameDeltaTime`, `kOffscreenCoordinate`,
+  `kValidationTolerance`). Replaces scattered floating point literals.
+- `arin::palette`: shared accent colors (`kAccentBlue`, `kProgressGreen`) so
+  style factories do not duplicate hexadecimal literals.
+- `arin::Font::layout_text_in_rect(text, bounds, scale, align_h, align_v)`: computes
+  the drawing origin with optical vertical centering. The visible glyph mass is
+  centered instead of the full line box, so labels do not appear shifted down.
+- `Renderer2D::draw_text_centered` and `Renderer2D::draw_text_in_rect`: render
+  through `Font::layout_text_in_rect`. Buttons, list rows, menu entries, and
+  checkbox labels all use this path.
+- `Layout::clear_hover()`: releases hover state on all children without
+  synthetic magic coordinates at call sites.
+- `ListBox::row_rect_at(index)` and `ContextMenu::row_rect_at(index)`: pure row
+  geometry used by both rendering and hit testing.
+
+```cpp
+#include <arin/arin.hpp>
+
+arin::Rect button(0.0f, 0.0f, 200.0f, 48.0f);
+arin::Rect icon = button.centered(arin::Vec2(16.0f, 16.0f));
+arin::Rect inner = button.inset(arin::Padding(14.0f, 6.0f));
+
+arin::Font font;
+arin::Vec2 origin = font.layout_text_in_rect("Save", button, 1.0f);
+```
+
+#### Fixed-size widgets and layout stability
+
+Rendering never mutates widget bounds. A `Button` grows only through the explicit
+sizing helpers `fit_to_text()` and `ensure_containment()`, which callers invoke
+before the layout pass. Consequences:
+
+- Layout containers keep the geometry they computed, so `SpaceBetween` gaps and
+  `distribute_children_equally()` widths stay exact on every frame.
+- Multi-button rows cannot overflow their parent when a label is longer than the
+  space reserved for it; the label is scaled down to fit inside the button.
+- `Button::set_auto_resize(false)` documents that a button must keep its assigned
+  bounds. It is optional, because render does not resize either way.
+
+```cpp
+// Equal-width rows: reserve exactly the container width across all children.
+auto row = app.add_hbox(40.0f, 120.0f, 10.0f);
+row->set_size(440.0f, 32.0f);
+row->add_button("Save", 0.0f, 32.0f)->set_auto_resize(false);
+row->add_button("Don't Save", 0.0f, 32.0f)->set_auto_resize(false);
+row->add_button("Cancel", 0.0f, 32.0f)->set_auto_resize(false);
+row->set_justify(arin::LayoutJustify::Start);
+row->distribute_children_equally();
+```
+
+#### Layout and alignment rules
+
+- `LayoutAlignment` controls the cross axis (horizontal in `VBox`, vertical in `HBox`).
+- `LayoutJustify` controls the main axis (`Start`, `Center`, `End`, `SpaceBetween`,
+  `SpaceAround`, `SpaceEvenly`).
+- `Stretch` is resolved before justification so distributed space uses final sizes.
+- `validate()` reports overlaps and container overflows with a fixed tolerance
+  (`UiMetrics::kValidationTolerance`).
+
+---
+
 ### 4.13 Context Menu System (`arin::ContextMenu`, `arin::MenuItem`, `arin::ContextMenuStyle`)
 
 Desktop-grade floating popup context menu triggered on right-click or programmatic invocation, styled after modern desktop menus with soft drop shadow, crisp border, icons, and keyboard shortcuts.
@@ -715,6 +791,8 @@ The floating menu widget itself:
 - `add_separator()`: Inserts divider between action groups.
 - `clear()`: Removes all items.
 - `show(float x, float y, float screen_width = 0.0f, float screen_height = 0.0f)`: Opens and positions popup with automatic screen clamping.
+- `show(float x, float y, const Font& font, float screen_width = 0.0f, float screen_height = 0.0f)`: Preferred overload that measures labels with real font metrics.
+- `row_rect_at(size_t index) const`: Returns the row rectangle used for rendering and hit testing.
 - `hide()`: Closes and dismisses the context menu.
 - `is_visible() const`: Checks if popup is active.
 - `on_dismiss(std::function<void()> cb)`: Callback fired on menu closure.

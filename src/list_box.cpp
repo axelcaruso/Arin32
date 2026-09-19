@@ -27,6 +27,7 @@
  */
 
 #include "arin/list_box.hpp"
+#include "arin/metrics.hpp"
 #include <GL/glew.h>
 #include <cmath>
 #include <algorithm>
@@ -67,7 +68,7 @@ ListBox& ListBox::set_size(float width, float height) {
 }
 
 ListBox& ListBox::set_item_height(float height) {
-    m_item_height = std::max(16.0f, height);
+    m_item_height = std::max(UiMetrics::kMinimumItemHeight, height);
     clamp_scroll();
     return *this;
 }
@@ -235,6 +236,19 @@ float ListBox::max_scroll_offset() const {
 void ListBox::clamp_scroll() {
     float max_s = max_scroll_offset();
     m_scroll_offset = std::clamp(m_scroll_offset, 0.0f, max_s);
+}
+
+/**
+ * @brief Returns the full-width row rectangle for an item index.
+ */
+Rect ListBox::row_rect_at(size_t index) const {
+    // Step 1: Account for symmetric padding and scrollbar reservation.
+    const float pad = m_style.item_padding;
+    const bool has_scroll = needs_scrollbar();
+    const float content_w = m_bounds.width - 2.0f * pad - (has_scroll ? UiMetrics::kListScrollTrackWidth : 0.0f);
+    // Step 2: Offset by the scrolled item index.
+    const float item_y = m_bounds.y + 1.0f - m_scroll_offset + static_cast<float>(index) * m_item_height;
+    return Rect(m_bounds.x + pad, item_y, content_w, m_item_height);
 }
 
 Rect ListBox::scrollbar_track_rect() const {
@@ -426,40 +440,32 @@ void ListBox::render(Renderer2D& renderer) {
             text_color = m_style.text_color;
         }
 
-        float text_x = row_rect.x + 8.0f;
+        float text_x = row_rect.x + UiMetrics::kListRowTextInset;
 
         if (m_mode == ListBoxMode::CheckBox) {
-            // 16x16 Checkbox with 3px corner radius
-            float chk_size = 16.0f;
-            float chk_x = row_rect.x + 6.0f;
-            float chk_y = item_y + (m_item_height - chk_size) * 0.5f;
-            Rect chk_rect(chk_x, chk_y, chk_size, chk_size);
+            // Step 3a: Center the row checkbox with the shared rectangle helper.
+            const float chk_size = UiMetrics::kListCheckBoxSize;
+            const float chk_x = row_rect.x + UiMetrics::kListCheckBoxInset;
+            const Rect centered_chk = row_rect.centered(Vec2(chk_size, chk_size));
+            const Rect chk_rect(chk_x, centered_chk.y, chk_size, chk_size);
 
             if (m_items[i].checked) {
-                // Checked: Accent fill with white checkmark
-                renderer.draw_rounded_rect(chk_rect, 3.0f, m_style.checkbox_checked_color);
-                renderer.draw_checkmark(chk_rect, m_style.checkmark_color, 1.8f);
+                renderer.draw_rounded_rect(chk_rect, UiMetrics::kListCheckBoxCorner, m_style.checkbox_checked_color);
+                renderer.draw_checkmark(chk_rect, m_style.checkmark_color, UiMetrics::kListCheckMarkWidth);
             } else {
-                // Unchecked: White box with subtle border
-                renderer.draw_rounded_rect(
-                    chk_rect,
-                    3.0f,
-                    m_style.checkbox_unchecked_color,
-                    m_style.checkbox_border_color,
-                    1.0f
-                );
+                renderer.draw_rounded_rect(chk_rect, UiMetrics::kListCheckBoxCorner, m_style.checkbox_unchecked_color, m_style.checkbox_border_color, 1.0f);
             }
 
-            text_x = chk_x + chk_size + 8.0f;
+            text_x = chk_x + chk_size + UiMetrics::kListRowTextInset;
         }
 
-        // Draw item text (centered vertically in row)
-        float text_y = item_y + (m_item_height - 12.0f) * 0.5f - 1.0f;
-        renderer.draw_text(m_items[i].text, Vec2(text_x, text_y), text_color, 0.95f);
+        // Step 3b: Draw item text with optical vertical centering.
+        const Rect label_bounds(text_x, item_y, row_rect.right() - text_x, m_item_height);
+        renderer.draw_text_in_rect(m_items[i].text, label_bounds, text_color, UiMetrics::kListLabelScale, TextAlignH::Left, TextAlignV::Center);
     }
 
-    renderer.flush(); // Flush text batch inside scissor
-    glDisable(GL_SCISSOR_TEST);
+    renderer.flush();
+    renderer.pop_clip_rect();
 
     // 4. Render Scrollbar (if content overflows)
     if (has_scroll) {
@@ -469,7 +475,7 @@ void ListBox::render(Renderer2D& renderer) {
         // Subtle track background capsule
         renderer.draw_rounded_rect(
             track,
-            3.5f,
+            UiMetrics::kListTrackCorner,
             m_style.scrollbar_track_color
         );
 
@@ -478,7 +484,7 @@ void ListBox::render(Renderer2D& renderer) {
             ? m_style.scrollbar_thumb_active_color
             : m_style.scrollbar_thumb_color;
 
-        renderer.draw_rounded_rect(thumb, 3.5f, thumb_col);
+        renderer.draw_rounded_rect(thumb, UiMetrics::kListTrackCorner, thumb_col);
     }
 }
 

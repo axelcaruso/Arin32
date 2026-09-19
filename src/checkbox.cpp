@@ -27,7 +27,10 @@
  */
 
 #include "arin/checkbox.hpp"
+#include "arin/metrics.hpp"
+#include "arin/font.hpp"
 #include <algorithm>
+#include <cmath>
 
 namespace arin {
 
@@ -37,8 +40,51 @@ CheckBox::CheckBox(
     float y,
     bool checked
 ) : m_label(std::move(label)),
-    m_bounds(x, y, 160.0f, 20.0f),
-    m_checked(checked) {}
+    m_bounds(x, y, UiMetrics::kDefaultCheckBoxSize.x, UiMetrics::kDefaultCheckBoxSize.y),
+    m_checked(checked),
+    m_auto_resize(true) {
+    fit_to_content();
+}
+
+CheckBox& CheckBox::set_bounds(const Rect& bounds) {
+    m_bounds = bounds;
+    m_auto_resize = false;
+    return *this;
+}
+
+CheckBox& CheckBox::set_position(float x, float y) {
+    m_bounds.x = x;
+    m_bounds.y = y;
+    return *this;
+}
+
+CheckBox& CheckBox::set_size(float width, float height) {
+    m_bounds.width = width;
+    m_bounds.height = height;
+    m_auto_resize = false;
+    return *this;
+}
+
+CheckBox& CheckBox::set_label(std::string label) {
+    m_label = std::move(label);
+    if (m_auto_resize) {
+        fit_to_content();
+    }
+    return *this;
+}
+
+CheckBox& CheckBox::set_style(const CheckBoxStyle& style) {
+    m_style = style;
+    if (m_auto_resize) {
+        fit_to_content();
+    }
+    return *this;
+}
+
+CheckBox& CheckBox::set_auto_resize(bool enable) {
+    m_auto_resize = enable;
+    return *this;
+}
 
 CheckBox& CheckBox::set_checked(bool checked) {
     if (m_checked != checked) {
@@ -55,11 +101,41 @@ CheckBox& CheckBox::toggle() {
 }
 
 CheckBox& CheckBox::fit_to_content(const Font& font) {
-    Vec2 text_size = font.measure_text(m_label, m_style.text_scale);
-    float w = m_style.box_size + m_style.text_spacing + text_size.x;
-    float h = std::max(m_style.box_size, text_size.y);
-    m_bounds.width = w;
-    m_bounds.height = h;
+    float w = m_style.box_size;
+    float h = std::max(UiMetrics::kDefaultCheckBoxSize.y, m_style.box_size);
+    if (!m_label.empty()) {
+        Vec2 text_size = font.measure_text(m_label, m_style.text_scale);
+        w += m_style.text_spacing + text_size.x;
+        h = std::max(h, text_size.y);
+    }
+    m_bounds.width = std::ceil(w);
+    m_bounds.height = std::ceil(h);
+    return *this;
+}
+
+CheckBox& CheckBox::fit_to_content() {
+    Font font;
+    return fit_to_content(font);
+}
+
+CheckBox& CheckBox::ensure_containment(const Font& font) {
+    if (!m_auto_resize) return *this;
+
+    float w = m_style.box_size;
+    float h = std::max(UiMetrics::kDefaultCheckBoxSize.y, m_style.box_size);
+    if (!m_label.empty()) {
+        Vec2 text_size = font.measure_text(m_label, m_style.text_scale);
+        w += m_style.text_spacing + text_size.x;
+        h = std::max(h, text_size.y);
+    }
+    w = std::ceil(w);
+    h = std::ceil(h);
+    if (m_bounds.width < w) {
+        m_bounds.width = w;
+    }
+    if (m_bounds.height < h) {
+        m_bounds.height = h;
+    }
     return *this;
 }
 
@@ -107,13 +183,17 @@ void CheckBox::update(float dt) {
 }
 
 void CheckBox::render(Renderer2D& renderer) {
+    if (m_auto_resize) {
+        ensure_containment(renderer.font());
+    }
+
     if (!m_visible || m_bounds.width <= 0.0f || m_bounds.height <= 0.0f) {
         return;
     }
 
-    // Vertically center the checkbox square inside the widget bounds
-    float box_y = m_bounds.y + (m_bounds.height - m_style.box_size) * 0.5f;
-    Rect box_rect(m_bounds.x, box_y, m_style.box_size, m_style.box_size);
+    // Step 1: Vertically center the box with the shared rectangle helper.
+    const Rect box_rect = m_bounds.centered(Vec2(m_style.box_size, m_style.box_size));
+    const Rect aligned_box_rect(m_bounds.x, box_rect.y, m_style.box_size, m_style.box_size);
 
     Color fill;
     Color border;
@@ -130,33 +210,29 @@ void CheckBox::render(Renderer2D& renderer) {
     }
 
     // 1. Draw rounded square container
-    renderer.draw_rounded_rect(
-        box_rect,
-        m_style.corner_radius,
-        fill,
-        border,
-        1.0f
-    );
+    renderer.draw_rounded_rect(aligned_box_rect, m_style.corner_radius, fill, border, 1.0f);
 
-    // 2. Draw checkmark if checked
+    // Step 2: Draw the checkmark when checked.
     if (m_checked) {
-        renderer.draw_checkmark(box_rect, m_style.checkmark_color, 2.0f);
+        renderer.draw_checkmark(aligned_box_rect, m_style.checkmark_color, 2.0f);
     }
 
-    // 3. Draw accompanying text label strictly clipped to widget area
+    // Step 3: Draw the label with shared optical vertical centering.
+    // The text column starts after the box plus spacing and is vertically
+    // centered with the same baseline-aware helper used by every widget.
     if (!m_label.empty()) {
-        float text_x = m_bounds.x + m_style.box_size + m_style.text_spacing;
+        const float text_x = m_bounds.x + m_style.box_size + m_style.text_spacing;
         Vec2 text_size = renderer.font().measure_text(m_label, m_style.text_scale);
-        float text_y = m_bounds.y + (m_bounds.height - text_size.y) * 0.5f;
-
-        Color label_color = m_enabled ? m_style.text_color : m_style.disabled_color;
-
-        renderer.draw_text(
-            m_label,
-            Vec2(text_x, text_y),
-            label_color,
-            m_style.text_scale
-        );
+        float effective_scale = m_style.text_scale;
+        float avail_w = m_bounds.right() - text_x;
+        if (!m_auto_resize && avail_w > 0.0f && text_size.x > avail_w) {
+            effective_scale *= (avail_w / text_size.x);
+        }
+        const Rect text_bounds(text_x, m_bounds.y, std::max(0.0f, avail_w), m_bounds.height);
+        const Color label_color = m_enabled ? m_style.text_color : m_style.disabled_color;
+        renderer.push_clip_rect(m_bounds);
+        renderer.draw_text_in_rect(m_label, text_bounds, label_color, effective_scale, TextAlignH::Left, TextAlignV::Center);
+        renderer.pop_clip_rect();
     }
 }
 

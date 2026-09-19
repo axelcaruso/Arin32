@@ -30,6 +30,7 @@
 #define ARIN32_APP_HPP
 
 #include "types.hpp"
+#include "metrics.hpp"
 #include "theme.hpp"
 #include "window.hpp"
 #include "renderer.hpp"
@@ -54,7 +55,7 @@ namespace arin {
  * @brief High-level application orchestrator for Arin32.
  *
  * Encapsulates window lifecycle, OpenGL context initialization, rendering loop,
- * and automatic widget event dispatching into an absurdly simple API.
+ * and automatic widget event dispatching into a concise API requiring only a few lines of setup code.
  *
  * Example:
  * @code
@@ -173,8 +174,8 @@ public:
     std::shared_ptr<ListBox> add_list_box(
         float x,
         float y,
-        float width = 220.0f,
-        float height = 180.0f,
+        float width = UiMetrics::kDefaultListBoxSize.x,
+        float height = UiMetrics::kDefaultListBoxSize.y,
         ListBoxMode mode = ListBoxMode::Standard
     );
 
@@ -187,8 +188,8 @@ public:
     std::shared_ptr<CheckListBox> add_check_list_box(
         float x,
         float y,
-        float width = 220.0f,
-        float height = 180.0f
+        float width = UiMetrics::kDefaultListBoxSize.x,
+        float height = UiMetrics::kDefaultListBoxSize.y
     );
 
     /**
@@ -260,7 +261,7 @@ public:
         const std::string& initial_text,
         float x,
         float y,
-        float width = 200.0f,
+        float width = UiMetrics::kDefaultTextInputSize.x,
         float height = 32.0f
     );
     std::shared_ptr<TextInput> add_text_input(TextInput input);

@@ -30,6 +30,7 @@
 #define ARIN32_IMAGE_HPP
 
 #include "types.hpp"
+#include "metrics.hpp"
 #include "widget.hpp"
 #include "texture.hpp"
 #include "renderer.hpp"
@@ -183,7 +184,7 @@ public:
     Rect compute_content_rect() const;
 
 private:
-    Rect m_bounds{0.0f, 0.0f, 100.0f, 100.0f};
+    Rect m_bounds{0.0f, 0.0f, UiMetrics::kDefaultImageSize.x, UiMetrics::kDefaultImageSize.y};
     std::shared_ptr<Texture> m_texture{nullptr};
     ImageScaleMode m_scale_mode{ImageScaleMode::Fit};
     float m_corner_radius{0.0f};

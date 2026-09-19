@@ -38,6 +38,7 @@
 #define ARIN32_MASTER_HPP
 
 #include "types.hpp"
+#include "metrics.hpp"
 #include "theme.hpp"
 #include "input.hpp"
 #include "font.hpp"

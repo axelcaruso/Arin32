@@ -56,6 +56,43 @@ static void save_screenshot_ppm(const std::string& filename, int width, int heig
     }
 }
 
+/**
+ * @brief Named colors used by the demo canvas so raw hex literals stay out of
+ *        the drawing code. Values mirror a light neutral desktop palette.
+ */
+namespace demo_style {
+constexpr uint32_t kTextStrong    = 0x111827; ///< Headings and emphasized labels.
+constexpr uint32_t kTextPrimary   = 0x1F2937; ///< Section titles.
+constexpr uint32_t kTextBody      = 0x374151; ///< Body copy inside detail cards.
+constexpr uint32_t kTextSecondary = 0x4B5563; ///< Subtitles and helper text.
+constexpr uint32_t kTextMuted     = 0x6B7280; ///< Captions and footer text.
+constexpr uint32_t kBorder        = 0xD1D5DB; ///< Card and control outlines.
+constexpr uint32_t kSoftBorder    = 0xE5E7EB; ///< Dividers and badge outlines.
+constexpr uint32_t kBadgeFill     = 0xF3F4F6; ///< Icon badge background.
+constexpr uint32_t kFooterFill    = 0xF9FAFB; ///< Dialog footer background.
+} // namespace demo_style
+
+/**
+ * @brief Named geometry and typography values for the demo layout.
+ *
+ * Keeping these together documents the composition grid and removes repeated
+ * floating point literals from the widget construction code.
+ */
+namespace demo_metrics {
+constexpr float kPageMargin      = 40.0f;  ///< Outer canvas margin.
+constexpr float kCardPadding     = 16.0f;  ///< Inner card padding.
+constexpr float kCardCorner      = 6.0f;   ///< Card corner radius.
+constexpr float kInnerCorner     = 4.0f;   ///< Radius for inner surfaces and badges.
+constexpr float kBorderWidth     = 1.0f;   ///< Card and control border thickness.
+constexpr float kTitleScale      = 1.25f;  ///< Hero banner text scale.
+constexpr float kDialogTitleScale= 1.2f;   ///< Dialog heading text scale.
+constexpr float kCardTitleScale  = 1.0f;   ///< Card heading text scale.
+constexpr float kIconLabelScale  = 0.65f;  ///< Icon caption text scale.
+constexpr float kIconBadgeSize   = 34.0f;  ///< Icon badge square size.
+constexpr float kIconGlyphSize   = 18.0f;  ///< Icon glyph size inside a badge.
+constexpr float kIconStep        = 44.0f;  ///< Horizontal stride between icons.
+} // namespace demo_metrics
+
 struct PlayerStats {
     std::string name;
     std::string position;
@@ -81,7 +118,7 @@ int main(int argc, char** argv) {
     arin::App app("Arin32 & ArinOS - Comprehensive UI & Layout Showcase", 1024, 768);
 
     // Modern neutral slate grey canvas
-    app.theme().background_color = arin::Color::from_hex(0xECEFF1);
+    app.theme().background_color = arin::Color::from_hex(arin::palette::kCanvasLight);
 
     std::string global_status = "Status: Ready. Right-click anywhere for Context Menu; interact with inputs or layouts.";
     int action_counter = 0;
@@ -128,7 +165,8 @@ int main(int argc, char** argv) {
         std::cout << "[Arin32 Event] Cloud CheckBox toggled: " << (checked ? "ON" : "OFF") << "\n";
     });
 
-    // Automatic centered HBox spanning the dialog footer without hardcoded offsets
+    // Automatic action row spanning the dialog footer. Equal widths keep the
+    // footer symmetrical without absolute per-button coordinates.
     auto dialog_actions = app.add_hbox(dialog_x, footer_y + 16.0f, 10.0f);
     dialog_actions->set_size(dialog_w, 32.0f);
     dialog_actions->set_padding(arin::Padding(20.0f, 0.0f));
@@ -159,7 +197,12 @@ int main(int argc, char** argv) {
         std::cout << "[Arin32 Event] 'Cancel' button clicked!\n";
     });
 
-    dialog_actions->update_layout();
+    // Equal action widths keep the footer symmetrical on every window size.
+    save_btn->set_auto_resize(false);
+    dont_save_btn->set_auto_resize(false);
+    cancel_btn->set_auto_resize(false);
+    dialog_actions->set_justify(arin::LayoutJustify::Start);
+    dialog_actions->distribute_children_equally();
 
     // -------------------------------------------------------------------------
     // 3. Modern Progress Bars (Determinate & Indeterminate)
@@ -172,10 +215,11 @@ int main(int argc, char** argv) {
     auto det_bar = app.add_progress_bar(pb_x, 320.0f, pb_w, pb_h, 68.0f, 0.0f, 100.0f);
     det_bar->set_style(arin::ProgressBarStyle::green());
 
-    // Controls for Determinate Bar using an HBox layout with SpaceBetween justification
+    // Control row for the determinate bar. Equal widths fill the bar exactly,
+    // so buttons can never overflow or leave ragged gaps (new layout API).
     auto pb_controls = app.add_hbox(pb_x, 348.0f, 10.0f);
     pb_controls->set_size(pb_w, 28.0f);
-    pb_controls->set_justify(arin::LayoutJustify::SpaceBetween);
+    pb_controls->set_justify(arin::LayoutJustify::Start);
     pb_controls->set_validation_logging(true);
 
     auto dec_btn = pb_controls->add_button("- 10%", 70.0f, 28.0f);
@@ -192,14 +236,20 @@ int main(int argc, char** argv) {
         global_status = "Progress: " + std::to_string(static_cast<int>(det_bar->percentage() * 100.0f)) + "%";
     });
 
-    // Auto-spaced buttons with SpaceBetween so Green Style and Blue Style never touch
+    // Equal-width style buttons fill the remaining row space exactly.
     auto green_btn = pb_controls->add_button("Green Style", 100.0f, 28.0f);
     green_btn->set_style(arin::ButtonStyle::secondary());
 
     auto blue_btn = pb_controls->add_button("Blue Style", 90.0f, 28.0f);
     blue_btn->set_style(arin::ButtonStyle::secondary());
 
-    pb_controls->update_layout();
+    // Freeze the control row: fixed-size buttons shrink text instead of
+    // growing bounds, and equal widths fill the bar width exactly.
+    dec_btn->set_auto_resize(false);
+    inc_btn->set_auto_resize(false);
+    green_btn->set_auto_resize(false);
+    blue_btn->set_auto_resize(false);
+    pb_controls->distribute_children_equally();
 
     // Indeterminate Progress Bar (Traveling Chunk marquee)
     auto indet_bar = app.add_progress_bar(pb_x, 405.0f, pb_w, pb_h);
@@ -219,11 +269,15 @@ int main(int argc, char** argv) {
         global_status = "Style: Accent Blue (#0067C0)";
     });
 
+    // Single-button row: pinned to the start of the track with a fixed extent.
     auto indet_controls = app.add_hbox(pb_x, 433.0f, 8.0f);
     indet_controls->set_size(pb_w, 28.0f);
+    indet_controls->set_justify(arin::LayoutJustify::Start);
     indet_controls->set_validation_logging(true);
+
     auto toggle_indet_btn = indet_controls->add_button("Toggle Indeterminate", 155.0f, 28.0f);
     toggle_indet_btn->set_style(arin::ButtonStyle::secondary());
+    toggle_indet_btn->set_auto_resize(false);
     toggle_indet_btn->on_click([&]() {
         if (indet_bar->is_indeterminate()) {
             indet_bar->set_indeterminate(false);
@@ -235,6 +289,7 @@ int main(int argc, char** argv) {
         }
     });
 
+    // Run one explicit layout pass so the validation report covers this row.
     indet_controls->update_layout();
 
     // -------------------------------------------------------------------------
@@ -262,9 +317,10 @@ int main(int argc, char** argv) {
     for (const auto& p : roster_data) {
         roster_list->add_item(p.name);
     }
-    roster_list->set_selected_index(3);
+    constexpr int kDefaultRosterSelection = 3;
+    roster_list->set_selected_index(kDefaultRosterSelection);
 
-    PlayerStats current_player = roster_data[3];
+    PlayerStats current_player = roster_data[kDefaultRosterSelection];
 
     roster_list->on_selection_changed([&](int index, const std::string& name) {
         if (index >= 0 && index < static_cast<int>(roster_data.size())) {
@@ -273,8 +329,16 @@ int main(int argc, char** argv) {
         }
     });
 
-    // OK Button for Roster Dialog
-    auto roster_ok_btn = app.add_button("OK", roster_x + 255.0f, roster_y + 175.0f, 85.0f, 32.0f);
+    // OK button for the roster dialog, placed relative to the list rectangle.
+    const arin::Rect roster_bounds(roster_x, roster_y, roster_w, roster_h);
+    auto roster_ok_btn = app.add_button(
+        "OK",
+        roster_bounds.right() + 25.0f,
+        roster_bounds.y + roster_bounds.height - 32.0f,
+        85.0f,
+        32.0f
+    );
+    roster_ok_btn->set_auto_resize(false);
     roster_ok_btn->set_style(arin::ButtonStyle::secondary());
     roster_ok_btn->on_click([&]() {
         global_status = "Roster Confirmed: " + current_player.name;
@@ -315,13 +379,13 @@ int main(int argc, char** argv) {
     // -------------------------------------------------------------------------
     const float bottom_y = 485.0f;
     const float palette_card_w = 440.0f;
-    const float palette_x = 40.0f + 16.0f; // 56.0f (exact 16px card padding)
+    const float palette_x = demo_metrics::kPageMargin + demo_metrics::kCardPadding;
 
     // Row 1 of Palette: Primary, Secondary, Success, Danger
     // Uses distribute_children_equally() to dynamically compute button widths
     auto palette_row1 = app.add_hbox(40.0f, bottom_y + 28.0f, 10.0f);
     palette_row1->set_size(palette_card_w, 32.0f);
-    palette_row1->set_padding(arin::Padding(16.0f, 0.0f));
+    palette_row1->set_padding(arin::Padding(demo_metrics::kCardPadding, 0.0f));
 
     auto prim_b = palette_row1->add_button("Primary", 0.0f, 32.0f);
     prim_b->set_style(arin::ButtonStyle::primary());
@@ -339,20 +403,24 @@ int main(int argc, char** argv) {
     dang_b->set_style(arin::ButtonStyle::danger());
     dang_b->on_click([&]() { global_status = "Palette: Danger button clicked"; });
 
+    // Freeze palette buttons so render never invalidates the equal layout.
+    for (auto* btn : {prim_b.get(), sec_b.get(), succ_b.get(), dang_b.get()}) {
+        btn->set_auto_resize(false);
+    }
+    palette_row1->set_justify(arin::LayoutJustify::Start);
     palette_row1->distribute_children_equally();
-    palette_row1->update_layout();
     palette_row1->set_validation_logging(true);
 
     // Row 2 of Palette: Outline, Disabled, Exit Demo
     // Matches row 1 button dimensions and centers them symmetrically in the card
     auto palette_row2 = app.add_hbox(40.0f, bottom_y + 70.0f, 10.0f);
     palette_row2->set_size(palette_card_w, 32.0f);
-    palette_row2->set_padding(arin::Padding(16.0f, 0.0f));
-    palette_row2->set_justify(arin::LayoutJustify::Center);
+    palette_row2->set_padding(arin::Padding(demo_metrics::kCardPadding, 0.0f));
+    palette_row2->set_justify(arin::LayoutJustify::Start);
 
     float row2_btn_w = prim_b->bounds().width;
     auto outl_b = palette_row2->add_button("Outline", row2_btn_w, 32.0f);
-    outl_b->set_style(arin::ButtonStyle::outline(arin::Color::from_hex(0x0067C0)));
+    outl_b->set_style(arin::ButtonStyle::outline(arin::Color::from_hex(arin::palette::kAccentBlue)));
     outl_b->on_click([&]() { global_status = "Palette: Outline button clicked"; });
 
     auto dis_b = palette_row2->add_button("Disabled", row2_btn_w, 32.0f);
@@ -365,7 +433,11 @@ int main(int argc, char** argv) {
         app.close();
     });
 
-    palette_row2->update_layout();
+    // Match row 1 widths with the same equal-distribution API.
+    outl_b->set_auto_resize(false);
+    dis_b->set_auto_resize(false);
+    exit_b->set_auto_resize(false);
+    palette_row2->distribute_children_equally();
     palette_row2->set_validation_logging(true);
 
     // -------------------------------------------------------------------------
@@ -379,13 +451,13 @@ int main(int argc, char** argv) {
     // Load sample image thumbnail with GPU SDF corner rounding
     auto sample_img = app.add_image(
         "button-dialog-example.png",
-        showcase_x + 16.0f,
+        showcase_x + demo_metrics::kCardPadding,
         showcase_y + 34.0f,
         110.0f,
         100.0f,
         arin::ImageScaleMode::Fit
     );
-    sample_img->set_corner_radius(5.0f);
+    sample_img->set_corner_radius(arin::UiMetrics::kDefaultImageCornerRadius);
 
     // -------------------------------------------------------------------------
     // 8. Desktop Context Menu & Layout Validation System
@@ -454,28 +526,33 @@ int main(int argc, char** argv) {
     app.set_default_context_menu(ctx_menu);
 
     // -------------------------------------------------------------------------
-    // 8. Custom Frame Callback: Cards, Shadows, Labels, and Visual Styling
+    // 9. Custom Frame Callback: Cards, Shadows, Labels, and Visual Styling
     // -------------------------------------------------------------------------
     app.on_frame([&](arin::Renderer2D& r) {
-        // App Title Banner
-        r.draw_text(
+        // App Title Banner (rect-based alignment keeps text on the page grid).
+        const float header_w = static_cast<float>(r.viewport_width()) - 2.0f * demo_metrics::kPageMargin;
+        r.draw_text_in_rect(
             "Arin32 & ArinOS - Comprehensive Graphical Library Showcase",
-            arin::Vec2(40.0f, 16.0f),
-            arin::Color::from_hex(0x1F2937),
-            1.25f
+            arin::Rect(demo_metrics::kPageMargin, 12.0f, header_w, 26.0f),
+            arin::Color::from_hex(demo_style::kTextPrimary),
+            demo_metrics::kTitleScale,
+            arin::TextAlignH::Left,
+            arin::TextAlignV::Center
         );
 
-        r.draw_text(
+        r.draw_text_in_rect(
             "Editable TextInput, Interactive CheckBox, Modern Progress Bars, List Boxes, and Dedicated Icon Showcase",
-            arin::Vec2(40.0f, 40.0f),
-            arin::Color::from_hex(0x4B5563),
-            0.88f
+            arin::Rect(demo_metrics::kPageMargin, 38.0f, header_w, 18.0f),
+            arin::Color::from_hex(demo_style::kTextSecondary),
+            arin::UiMetrics::kMenuLabelScale,
+            arin::TextAlignH::Left,
+            arin::TextAlignV::Center
         );
 
         // --- Dialog Card Container (Left) ---
         r.draw_shadow(
             arin::Rect(dialog_x, dialog_y, dialog_w, dialog_h),
-            6.0f,
+            demo_metrics::kCardCorner,
             arin::Color(0.0f, 0.0f, 0.0f, 0.15f),
             arin::Vec2(0.0f, 3.0f),
             10.0f
@@ -483,9 +560,9 @@ int main(int argc, char** argv) {
 
         r.draw_rounded_rect(
             arin::Rect(dialog_x, dialog_y, dialog_w, dialog_h),
-            6.0f,
+            demo_metrics::kCardCorner,
             arin::Color::white(),
-            arin::Color::from_hex(0xD1D5DB),
+            arin::Color::from_hex(demo_style::kBorder),
             1.0f
         );
 
@@ -493,65 +570,75 @@ int main(int argc, char** argv) {
         r.draw_icon(
             arin::IconType::Info,
             arin::Rect(dialog_x + 24.0f, dialog_y + 18.0f, 22.0f, 22.0f),
-            arin::Color::from_hex(0x0067C0)
+            arin::Color::from_hex(arin::palette::kAccentBlue)
         );
 
-        r.draw_text(
+        r.draw_text_in_rect(
             "Save your work?",
-            arin::Vec2(dialog_x + 54.0f, dialog_y + 18.0f),
-            arin::Color::from_hex(0x111827),
-            1.2f
+            arin::Rect(dialog_x + 54.0f, dialog_y + 14.0f, dialog_w - 54.0f - 24.0f, 26.0f),
+            arin::Color::from_hex(demo_style::kTextStrong),
+            demo_metrics::kDialogTitleScale,
+            arin::TextAlignH::Left,
+            arin::TextAlignV::Center
         );
 
-        r.draw_text(
+        r.draw_text_in_rect(
             "File name and cloud backup options:",
-            arin::Vec2(dialog_x + 24.0f, dialog_y + 48.0f),
-            arin::Color::from_hex(0x4B5563),
-            0.90f
+            arin::Rect(dialog_x + 24.0f, dialog_y + 46.0f, dialog_w - 48.0f, 18.0f),
+            arin::Color::from_hex(demo_style::kTextSecondary),
+            arin::UiMetrics::kSmallLabelScale,
+            arin::TextAlignH::Left,
+            arin::TextAlignV::Center
         );
 
         // Divider separating dialog body from footer (strictly inside card border)
         r.draw_rect(
             arin::Rect(dialog_x + 1.0f, footer_y, dialog_w - 2.0f, 1.0f),
-            arin::Color::from_hex(0xE5E7EB)
+            arin::Color::from_hex(demo_style::kSoftBorder)
         );
 
         // Dialog Footer Background (#F9FAFB) strictly inside the card border
         r.draw_rounded_rect(
             arin::Rect(dialog_x + 1.0f, footer_y + 1.0f, dialog_w - 2.0f, dialog_h - 162.0f),
-            5.0f,
-            arin::Color::from_hex(0xF9FAFB)
+            demo_metrics::kInnerCorner,
+            arin::Color::from_hex(demo_style::kFooterFill)
         );
         // Square off top corners of footer below divider
         r.draw_rect(
             arin::Rect(dialog_x + 1.0f, footer_y + 1.0f, dialog_w - 2.0f, 12.0f),
-            arin::Color::from_hex(0xF9FAFB)
+            arin::Color::from_hex(demo_style::kFooterFill)
         );
 
         // --- Progress Bars Section Labels ---
         std::string det_label = "Copying items... (" +
                                 std::to_string(static_cast<int>(det_bar->percentage() * 100.0f)) +
                                 "% - Determinate with Shimmer Sweep)";
-        r.draw_text(
+        r.draw_text_in_rect(
             det_label,
-            arin::Vec2(pb_x, 302.0f),
-            arin::Color::from_hex(0x1F2937),
-            0.90f
+            arin::Rect(pb_x, 300.0f, pb_w, 18.0f),
+            arin::Color::from_hex(demo_style::kTextPrimary),
+            arin::UiMetrics::kSmallLabelScale,
+            arin::TextAlignH::Left,
+            arin::TextAlignV::Center
         );
 
-        r.draw_text(
+        r.draw_text_in_rect(
             "Searching for updates... (Indeterminate Traveling Marquee Chunk)",
-            arin::Vec2(pb_x, 386.0f),
-            arin::Color::from_hex(0x1F2937),
-            0.90f
+            arin::Rect(pb_x, 384.0f, pb_w, 18.0f),
+            arin::Color::from_hex(demo_style::kTextPrimary),
+            arin::UiMetrics::kSmallLabelScale,
+            arin::TextAlignH::Left,
+            arin::TextAlignV::Center
         );
 
         // --- Roster Section Labels & Details Card (Right) ---
-        r.draw_text(
+        r.draw_text_in_rect(
             "Today's roster: (Standard ListBox with smooth scrollbar)",
-            arin::Vec2(roster_x, roster_y + 4.0f),
-            arin::Color::from_hex(0x111827),
-            0.95f
+            arin::Rect(roster_x, roster_y, roster_w + 190.0f, 20.0f),
+            arin::Color::from_hex(demo_style::kTextStrong),
+            arin::UiMetrics::kListLabelScale,
+            arin::TextAlignH::Left,
+            arin::TextAlignV::Center
         );
 
         // Player Details Card
@@ -562,98 +649,126 @@ int main(int argc, char** argv) {
 
         r.draw_rounded_rect(
             arin::Rect(info_x, info_y, info_w, info_h),
-            4.0f,
+            demo_metrics::kInnerCorner,
             arin::Color::white(),
-            arin::Color::from_hex(0xD1D5DB),
+            arin::Color::from_hex(demo_style::kBorder),
             1.0f
         );
 
-        r.draw_text(
+        // Detail rows are derived from the card rectangle and share one row height,
+        // so no absolute per-line offsets are required.
+        const arin::Rect info_card(info_x, info_y, info_w, info_h);
+        const float info_pad = 12.0f;
+        const float info_row_h = 24.0f;
+        const auto info_row = [&](float top_offset) {
+            return arin::Rect(info_card.x + info_pad, info_card.y + top_offset, info_w - 2.0f * info_pad, info_row_h);
+        };
+
+        r.draw_text_in_rect(
             "Player Details",
-            arin::Vec2(info_x + 12.0f, info_y + 10.0f),
-            arin::Color::from_hex(0x0067C0),
-            1.0f
+            info_row(8.0f),
+            arin::Color::from_hex(arin::palette::kAccentBlue),
+            demo_metrics::kCardTitleScale,
+            arin::TextAlignH::Left,
+            arin::TextAlignV::Center
         );
 
-        r.draw_text(
+        r.draw_text_in_rect(
             "Position: " + current_player.position,
-            arin::Vec2(info_x + 12.0f, info_y + 36.0f),
-            arin::Color::from_hex(0x374151),
-            0.90f
+            info_row(34.0f),
+            arin::Color::from_hex(demo_style::kTextBody),
+            arin::UiMetrics::kSmallLabelScale,
+            arin::TextAlignH::Left,
+            arin::TextAlignV::Center
         );
 
-        r.draw_text(
+        r.draw_text_in_rect(
             "Games played: " + std::to_string(current_player.games),
-            arin::Vec2(info_x + 12.0f, info_y + 60.0f),
-            arin::Color::from_hex(0x374151),
-            0.90f
+            info_row(58.0f),
+            arin::Color::from_hex(demo_style::kTextBody),
+            arin::UiMetrics::kSmallLabelScale,
+            arin::TextAlignH::Left,
+            arin::TextAlignV::Center
         );
 
-        r.draw_text(
+        r.draw_text_in_rect(
             "Goals: " + std::to_string(current_player.goals),
-            arin::Vec2(info_x + 12.0f, info_y + 84.0f),
-            arin::Color::from_hex(0x374151),
-            0.90f
+            info_row(82.0f),
+            arin::Color::from_hex(demo_style::kTextBody),
+            arin::UiMetrics::kSmallLabelScale,
+            arin::TextAlignH::Left,
+            arin::TextAlignV::Center
         );
 
         // --- System Features Section Label ---
-        r.draw_text(
+        r.draw_text_in_rect(
             "System Features: (CheckListBox with independent item toggling)",
-            arin::Vec2(chk_list_x, chk_list_y + 4.0f),
-            arin::Color::from_hex(0x111827),
-            0.95f
+            arin::Rect(chk_list_x, chk_list_y, chk_list_w, 20.0f),
+            arin::Color::from_hex(demo_style::kTextStrong),
+            arin::UiMetrics::kListLabelScale,
+            arin::TextAlignH::Left,
+            arin::TextAlignV::Center
         );
 
         // --- Action Buttons Section Card (Bottom Left) ---
         r.draw_rounded_rect(
-            arin::Rect(40.0f, bottom_y, 440.0f, showcase_h),
-            6.0f,
+            arin::Rect(demo_metrics::kPageMargin, bottom_y, 440.0f, showcase_h),
+            demo_metrics::kCardCorner,
             arin::Color::white(),
-            arin::Color::from_hex(0xD1D5DB),
+            arin::Color::from_hex(demo_style::kBorder),
             1.0f
         );
 
-        r.draw_text(
+        r.draw_text_in_rect(
             "Action Buttons Palette (Auto-Layout, Symmetrical Spacing):",
-            arin::Vec2(palette_x, bottom_y + 8.0f),
-            arin::Color::from_hex(0x111827),
-            0.92f
+            arin::Rect(palette_x, bottom_y + 4.0f, 440.0f - 2.0f * demo_metrics::kCardPadding, 22.0f),
+            arin::Color::from_hex(demo_style::kTextStrong),
+            arin::UiMetrics::kSmallLabelScale,
+            arin::TextAlignH::Left,
+            arin::TextAlignV::Center
         );
 
-        r.draw_text(
+        r.draw_text_in_rect(
             "Validated layout: dynamic widths & symmetrical alignment",
-            arin::Vec2(palette_x, bottom_y + 112.0f),
-            arin::Color::from_hex(0x6B7280),
-            0.82f
+            arin::Rect(palette_x, bottom_y + 108.0f, 440.0f - 2.0f * demo_metrics::kCardPadding, 18.0f),
+            arin::Color::from_hex(demo_style::kTextMuted),
+            arin::UiMetrics::kMenuShortcutScale,
+            arin::TextAlignH::Left,
+            arin::TextAlignV::Center
         );
 
         // --- Dedicated Vector Icons & Graphics Showcase Card (Bottom Right) ---
         r.draw_rounded_rect(
             arin::Rect(showcase_x, showcase_y, showcase_w, showcase_h),
-            6.0f,
+            demo_metrics::kCardCorner,
             arin::Color::white(),
-            arin::Color::from_hex(0xD1D5DB),
+            arin::Color::from_hex(demo_style::kBorder),
             1.0f
         );
 
-        r.draw_text(
+        r.draw_text_in_rect(
             "Sample Icons & Graphics Showcase (GPU Vector Glyphs):",
-            arin::Vec2(showcase_x + 16.0f, showcase_y + 8.0f),
-            arin::Color::from_hex(0x111827),
-            0.92f
+            arin::Rect(showcase_x + demo_metrics::kCardPadding, showcase_y + 4.0f,
+                       showcase_w - 2.0f * demo_metrics::kCardPadding, 22.0f),
+            arin::Color::from_hex(demo_style::kTextStrong),
+            arin::UiMetrics::kSmallLabelScale,
+            arin::TextAlignH::Left,
+            arin::TextAlignV::Center
         );
 
-        r.draw_text(
+        r.draw_text_in_rect(
             "Loaded Image",
-            arin::Vec2(showcase_x + 32.0f, showcase_y + 136.0f),
-            arin::Color::from_hex(0x6B7280),
-            0.78f
+            arin::Rect(showcase_x + demo_metrics::kCardPadding, showcase_y + 132.0f, 110.0f, 18.0f),
+            arin::Color::from_hex(demo_style::kTextMuted),
+            arin::UiMetrics::kMenuShortcutScale,
+            arin::TextAlignH::Center,
+            arin::TextAlignV::Center
         );
 
         // Draw crisp sample vector icons in a dedicated grid
         const float icon_grid_x = showcase_x + 145.0f;
         const float icon_grid_y = showcase_y + 36.0f;
-        const float icon_step = 44.0f;
+        const float icon_step = demo_metrics::kIconStep;
 
         const std::vector<std::pair<arin::IconType, std::string>> sample_icons_row1 = {
             {arin::IconType::Folder, "Folder"},
@@ -680,26 +795,29 @@ int main(int argc, char** argv) {
             float ix = icon_grid_x + i * icon_step;
             float iy = icon_grid_y;
 
-            // Subtle badge background
+            // Subtle badge background with centered glyph (new geometry API).
+            const arin::Rect badge1(ix, iy, demo_metrics::kIconBadgeSize, demo_metrics::kIconBadgeSize);
             r.draw_rounded_rect(
-                arin::Rect(ix, iy, 34.0f, 34.0f),
-                4.0f,
-                arin::Color::from_hex(0xF3F4F6),
-                arin::Color::from_hex(0xE5E7EB),
-                1.0f
+                badge1,
+                demo_metrics::kInnerCorner,
+                arin::Color::from_hex(demo_style::kBadgeFill),
+                arin::Color::from_hex(demo_style::kSoftBorder),
+                demo_metrics::kBorderWidth
             );
 
             r.draw_icon(
                 sample_icons_row1[i].first,
-                arin::Rect(ix + 8.0f, iy + 8.0f, 18.0f, 18.0f),
-                arin::Color::from_hex(0x0067C0)
+                badge1.centered(arin::Vec2(demo_metrics::kIconGlyphSize, demo_metrics::kIconGlyphSize)),
+                arin::Color::from_hex(arin::palette::kAccentBlue)
             );
 
-            r.draw_text(
+            r.draw_text_in_rect(
                 sample_icons_row1[i].second,
-                arin::Vec2(ix + 2.0f, iy + 36.0f),
-                arin::Color::from_hex(0x6B7280),
-                0.65f
+                arin::Rect(ix, iy + demo_metrics::kIconBadgeSize, demo_metrics::kIconBadgeSize, 14.0f),
+                arin::Color::from_hex(demo_style::kTextMuted),
+                demo_metrics::kIconLabelScale,
+                arin::TextAlignH::Center,
+                arin::TextAlignV::Top
             );
         }
 
@@ -708,50 +826,57 @@ int main(int argc, char** argv) {
             float ix = icon_grid_x + i * icon_step;
             float iy = icon_grid_y + 52.0f;
 
+            const arin::Rect badge2(ix, iy, demo_metrics::kIconBadgeSize, demo_metrics::kIconBadgeSize);
             r.draw_rounded_rect(
-                arin::Rect(ix, iy, 34.0f, 34.0f),
-                4.0f,
-                arin::Color::from_hex(0xF3F4F6),
-                arin::Color::from_hex(0xE5E7EB),
-                1.0f
+                badge2,
+                demo_metrics::kInnerCorner,
+                arin::Color::from_hex(demo_style::kBadgeFill),
+                arin::Color::from_hex(demo_style::kSoftBorder),
+                demo_metrics::kBorderWidth
             );
 
             r.draw_icon(
                 sample_icons_row2[i].first,
-                arin::Rect(ix + 8.0f, iy + 8.0f, 18.0f, 18.0f),
-                arin::Color::from_hex(0x1F2937)
+                badge2.centered(arin::Vec2(demo_metrics::kIconGlyphSize, demo_metrics::kIconGlyphSize)),
+                arin::Color::from_hex(demo_style::kTextPrimary)
             );
 
-            r.draw_text(
+            r.draw_text_in_rect(
                 sample_icons_row2[i].second,
-                arin::Vec2(ix + 2.0f, iy + 36.0f),
-                arin::Color::from_hex(0x6B7280),
-                0.65f
+                arin::Rect(ix, iy + demo_metrics::kIconBadgeSize, demo_metrics::kIconBadgeSize, 14.0f),
+                arin::Color::from_hex(demo_style::kTextMuted),
+                demo_metrics::kIconLabelScale,
+                arin::TextAlignH::Center,
+                arin::TextAlignV::Top
             );
         }
 
-        // --- Interactive Status Bar ---
+        // --- Interactive Status Bar (new geometry + text API) ---
+        const float status_margin = demo_metrics::kPageMargin;
+        const arin::Rect status_bar(status_margin, 655.0f, static_cast<float>(r.viewport_width()) - 2.0f * status_margin, 32.0f);
         r.draw_rounded_rect(
-            arin::Rect(40.0f, 655.0f, static_cast<float>(r.viewport_width()) - 80.0f, 32.0f),
-            4.0f,
+            status_bar,
+            demo_metrics::kInnerCorner,
             arin::Color::white(),
-            arin::Color::from_hex(0xD1D5DB),
+            arin::Color::from_hex(demo_style::kBorder),
             1.0f
         );
 
-        r.draw_text(
+        r.draw_text_in_rect(
             global_status,
-            arin::Vec2(52.0f, 663.0f),
-            arin::Color::from_hex(0x111827),
-            0.92f
+            status_bar.inset(arin::Padding(12.0f, 0.0f)),
+            arin::Color::from_hex(demo_style::kTextStrong),
+            arin::UiMetrics::kSmallLabelScale,
+            arin::TextAlignH::Left,
+            arin::TextAlignV::Center
         );
 
         // Footer copyright info
         r.draw_text_centered(
             "Copyright (c) 2026, Arin32 & ArinOS Contributors * BSD 2-Clause License * C++17 OpenGL",
             arin::Rect(0.0f, 715.0f, static_cast<float>(r.viewport_width()), 20.0f),
-            arin::Color::from_hex(0x6B7280),
-            0.85f
+            arin::Color::from_hex(demo_style::kTextMuted),
+            arin::UiMetrics::kMenuLabelScale
         );
     });
 
@@ -764,7 +889,8 @@ int main(int argc, char** argv) {
             indet_bar->set_anim_phase(0.45f);
 
             if (screenshot_context_menu && captured_frames == 2) {
-                app.show_context_menu(ctx_menu, 220.0f, 150.0f);
+                // New API: measure with the live renderer font for exact width.
+                ctx_menu->show(220.0f, 150.0f, r.font(), static_cast<float>(r.viewport_width()), static_cast<float>(r.viewport_height()));
             }
 
             int target_frame = screenshot_context_menu ? 4 : 3;
@@ -784,7 +910,7 @@ int main(int argc, char** argv) {
     std::cout << "==========================================================" << std::endl;
 
     // -------------------------------------------------------------------------
-    // 9. Run the Application Main Loop
+    // 10. Run the Application Main Loop
     // -------------------------------------------------------------------------
     app.run();
 

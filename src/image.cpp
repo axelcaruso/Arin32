@@ -77,10 +77,8 @@ Rect Image::compute_content_rect() const {
             return m_bounds;
 
         case ImageScaleMode::Center: {
-            // Keep native pixel size, center inside bounding box
-            float cx = m_bounds.x + (m_bounds.width - tex_w) * 0.5f;
-            float cy = m_bounds.y + (m_bounds.height - tex_h) * 0.5f;
-            return Rect(cx, cy, tex_w, tex_h);
+            // Step 1: Keep native pixel size centered with the shared helper.
+            return m_bounds.centered(Vec2(tex_w, tex_h));
         }
 
         case ImageScaleMode::Fit: {
@@ -94,9 +92,7 @@ Rect Image::compute_content_rect() const {
                 target_w = m_bounds.height * aspect;
             }
 
-            float cx = m_bounds.x + (m_bounds.width - target_w) * 0.5f;
-            float cy = m_bounds.y + (m_bounds.height - target_h) * 0.5f;
-            return Rect(cx, cy, target_w, target_h);
+            return m_bounds.centered(Vec2(target_w, target_h));
         }
 
         case ImageScaleMode::Fill: {
@@ -110,9 +106,7 @@ Rect Image::compute_content_rect() const {
                 target_w = m_bounds.height * aspect;
             }
 
-            float cx = m_bounds.x + (m_bounds.width - target_w) * 0.5f;
-            float cy = m_bounds.y + (m_bounds.height - target_h) * 0.5f;
-            return Rect(cx, cy, target_w, target_h);
+            return m_bounds.centered(Vec2(target_w, target_h));
         }
     }
 

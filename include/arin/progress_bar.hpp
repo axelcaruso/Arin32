@@ -30,6 +30,7 @@
 #define ARIN32_PROGRESS_BAR_HPP
 
 #include "types.hpp"
+#include "metrics.hpp"
 #include "renderer.hpp"
 #include "widget.hpp"
 #include <algorithm>
@@ -43,13 +44,13 @@ enum class ProgressBarMode : uint8_t {
     /**
      * @brief Quantified progress mode (default: 0% to 100%).
      * Shows current completion ratio and renders an active filled track with
-     * an animated, continuous soft-white shimmer sweep ("la cosita blanca que va avanzando").
+     * an animated, continuous soft-white shimmer sweep.
      */
     Determinate,
 
     /**
      * @brief Continuous loading mode with unknown total duration.
-     * An animated slice ("un cachito") of the accent color glides smoothly
+     * An animated slice of the accent color glides smoothly
      * from left to right across the track continuously.
      */
     Indeterminate
@@ -63,7 +64,7 @@ enum class ProgressBarMode : uint8_t {
  */
 struct ProgressBarStyle {
     Color track_color{Color::from_hex(0xE5E7EB)};     ///< Background track color (Light Slate Grey)
-    Color fill_color{Color::from_hex(0x06B025)};      ///< Windows 10 Accent Green (#06B025)
+    Color fill_color{Color::from_hex(palette::kProgressGreen)};      ///< Windows 10 Accent Green (#06B025)
     Color border_color{Color::from_hex(0xD1D5DB)};    ///< Subtle boundary border stroke
     float border_width{1.0f};                         ///< Border thickness in pixels (1.0 = subtle)
     float corner_radius{2.5f};                        ///< Sleek flat modern corner radius
@@ -75,7 +76,7 @@ struct ProgressBarStyle {
     static ProgressBarStyle green() {
         ProgressBarStyle s;
         s.track_color   = Color::from_hex(0xE5E7EB);
-        s.fill_color    = Color::from_hex(0x06B025); // Windows 10 progress green
+        s.fill_color    = Color::from_hex(palette::kProgressGreen);
         s.border_color  = Color::from_hex(0xD1D5DB);
         s.border_width  = 1.0f;
         s.corner_radius = 2.5f;
@@ -88,7 +89,7 @@ struct ProgressBarStyle {
     static ProgressBarStyle blue() {
         ProgressBarStyle s;
         s.track_color   = Color::from_hex(0xE5E7EB);
-        s.fill_color    = Color::from_hex(0x0067C0); // ArinOS / Windows 10 Accent Blue
+        s.fill_color    = Color::from_hex(palette::kAccentBlue);
         s.border_color  = Color::from_hex(0xD1D5DB);
         s.border_width  = 1.0f;
         s.corner_radius = 2.5f;
@@ -101,7 +102,7 @@ struct ProgressBarStyle {
     static ProgressBarStyle dark() {
         ProgressBarStyle s;
         s.track_color   = Color::from_hex(0x27272A); // Dark slate track
-        s.fill_color    = Color::from_hex(0x06B025); // Bright green fill
+        s.fill_color    = Color::from_hex(palette::kProgressGreen);
         s.border_color  = Color::from_hex(0x3F3F46); // Dark border
         s.border_width  = 1.0f;
         s.corner_radius = 2.5f;
@@ -117,7 +118,7 @@ struct ProgressBarStyle {
  * Features:
  * - Anti-aliased signed distance field rounded track and fill.
  * - Hardware cosine shimmer highlight wave sweeping continuously across determinate fill.
- * - Traveling accent chunk ("un cachito que va de izquierda a derecha") for indeterminate progress.
+ * - Traveling accent chunk for indeterminate progress.
  * - Fluid chaining API and range mapping.
  *
  * Example:
@@ -140,7 +141,7 @@ public:
      * @param width Width in pixels (default: 260).
      * @param height Height in pixels (default: 20).
      */
-    ProgressBar(float x, float y, float width = 260.0f, float height = 20.0f);
+    ProgressBar(float x, float y, float width = UiMetrics::kDefaultProgressBarSize.x, float height = UiMetrics::kDefaultProgressBarSize.y);
 
     /**
      * @brief Constructs a progress bar with position, size, initial value, and range.
@@ -319,7 +320,7 @@ public:
     void render(Renderer2D& renderer) override;
 
 private:
-    Rect m_bounds{0.0f, 0.0f, 260.0f, 20.0f};
+    Rect m_bounds{0.0f, 0.0f, UiMetrics::kDefaultProgressBarSize.x, UiMetrics::kDefaultProgressBarSize.y};
     ProgressBarMode m_mode{ProgressBarMode::Determinate};
     ProgressBarStyle m_style{ProgressBarStyle::green()};
 

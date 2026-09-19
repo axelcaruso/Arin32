@@ -30,6 +30,7 @@
 #define ARIN32_BUTTON_HPP
 
 #include "types.hpp"
+#include "metrics.hpp"
 #include "theme.hpp"
 #include "input.hpp"
 #include "renderer.hpp"
@@ -54,7 +55,7 @@ enum class ButtonState : uint8_t {
  * @brief Ultra-simple, high-performance interactive Push Button widget.
  *
  * Features:
- * - Fluid, absurdly simple builder-style API.
+ * - Fluent builder-style API with chained setters.
  * - Anti-aliased rounded corners and customizable styles (primary, success, danger, outline).
  * - Automatic centered typography with embedded zero-dependency font.
  * - Robust event state machine (hover, press, release, click dispatch).
@@ -184,10 +185,14 @@ public:
     /**
      * @brief Enables or disables automatic width/height expansion to fit content text.
      *
-     * When enabled (default: true), the button will automatically expand its dimensions
-     * to guarantee that text never overflows or touches borders.
+     * Automatic expansion is performed only by the explicit sizing helpers
+     * (fit_to_text and ensure_containment). Rendering never mutates bounds, so
+     * layout containers keep the geometry they computed and multi-button rows
+     * cannot overflow their parent. When a fixed-size button receives a label
+     * wider than its content box, the label is scaled down to fit.
      *
-     * @param enable true to auto-expand to fit text, false to keep fixed bounds.
+     * @param enable true to let explicit sizing helpers grow the button,
+     *               false to keep fixed bounds.
      * @return Reference to this for chaining.
      */
     Button& set_auto_resize(bool enable);
@@ -226,6 +231,10 @@ public:
      * @param font Font engine to measure text and glyph advances with.
      * @return Reference to this for chaining.
      */
+    Vec2 content_size(const Font& font) const;
+
+    Rect content_rect(const Font& font) const;
+
     Button& ensure_containment(const Font& font);
 
     // --- Event Callbacks ---
@@ -305,7 +314,7 @@ public:
 
 private:
     std::string m_text{"Button"};
-    Rect m_bounds{0.0f, 0.0f, 85.0f, 32.0f};
+    Rect m_bounds{0.0f, 0.0f, UiMetrics::kDefaultButtonSize.x, UiMetrics::kDefaultButtonSize.y};
     ButtonStyle m_style{ButtonStyle::primary()};
     ButtonState m_state{ButtonState::Normal};
 

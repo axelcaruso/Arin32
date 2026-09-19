@@ -31,6 +31,7 @@
 
 #include "widget.hpp"
 #include "types.hpp"
+#include "metrics.hpp"
 #include "icon.hpp"
 #include <string>
 #include <vector>
@@ -87,7 +88,7 @@ struct MenuItem {
 struct ContextMenuStyle {
     Color background_color{Color::white()};
     Color border_color{Color::from_hex(0xD1D5DB)};
-    Color hover_color{Color::from_hex(0x0067C0)};          ///< Accent Blue highlight on hover
+    Color hover_color{Color::from_hex(palette::kAccentBlue)};          ///< Accent Blue highlight on hover
     Color hover_text_color{Color::white()};
     Color text_color{Color::from_hex(0x1F2937)};
     Color text_disabled_color{Color::from_hex(0x9CA3AF)};
@@ -100,7 +101,12 @@ struct ContextMenuStyle {
     Vec2 shadow_offset{0.0f, 3.0f};
     float shadow_blur{10.0f};
     float corner_radius{5.0f};
-    float item_height{26.0f};
+    static constexpr float kDefaultItemHeight = 26.0f;
+    float label_scale{UiMetrics::kMenuLabelScale};
+    float shortcut_scale{UiMetrics::kMenuShortcutScale};
+    float icon_size{UiMetrics::kMenuIconSize};
+    float icon_column_width{UiMetrics::kMenuIconColumnWidth};
+    float item_height{kDefaultItemHeight};
     float separator_height{7.0f};
     float min_width{180.0f};
     Padding padding{4.0f, 4.0f};
@@ -144,6 +150,19 @@ public:
      *        within screen dimensions to prevent clipping.
      */
     void show(float x, float y, float screen_width = 0.0f, float screen_height = 0.0f);
+
+    /**
+     * @brief Displays the popup using real font metrics for size calculation.
+     * @param x Requested left edge in pixels.
+     * @param y Requested top edge in pixels.
+     * @param font Active font used for label measurement.
+     * @param screen_width Available screen width for clamping (0 disables clamping).
+     * @param screen_height Available screen height for clamping (0 disables clamping).
+     */
+    void show(float x, float y, const Font& font, float screen_width = 0.0f, float screen_height = 0.0f);
+
+    /// @brief Returns the row rectangle for an item index (used for hit testing).
+    Rect row_rect_at(size_t index) const;
 
     /**
      * @brief Hides and dismisses the context menu.

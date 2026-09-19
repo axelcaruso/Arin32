@@ -30,6 +30,7 @@
 #define ARIN32_LIST_BOX_HPP
 
 #include "types.hpp"
+#include "metrics.hpp"
 #include "widget.hpp"
 #include "renderer.hpp"
 #include "input.hpp"
@@ -72,10 +73,10 @@ struct ListBoxStyle {
     Color text_color{Color::from_hex(0x111827)};
     Color hover_color{Color::from_hex(0xF3F4F6)};
     Color hover_text_color{Color::from_hex(0x111827)};
-    Color selection_color{Color::from_hex(0x0067C0)};
+    Color selection_color{Color::from_hex(palette::kAccentBlue)};
     Color selected_text_color{Color::white()};
 
-    Color checkbox_checked_color{Color::from_hex(0x0067C0)};
+    Color checkbox_checked_color{Color::from_hex(palette::kAccentBlue)};
     Color checkmark_color{Color::white()};
     Color checkbox_unchecked_color{Color::white()};
     Color checkbox_border_color{Color::from_hex(0x9CA3AF)};
@@ -135,7 +136,7 @@ public:
     using ToggleCallback = std::function<void(int index, bool checked)>;
 
     ListBox();
-    ListBox(float x, float y, float width = 220.0f, float height = 180.0f,
+    ListBox(float x, float y, float width = UiMetrics::kDefaultListBoxSize.x, float height = UiMetrics::kDefaultListBoxSize.y,
             ListBoxMode mode = ListBoxMode::Standard);
     explicit ListBox(const Rect& bounds, ListBoxMode mode = ListBoxMode::Standard);
 
@@ -197,6 +198,7 @@ public:
     bool needs_scrollbar() const;
     float max_scroll_offset() const;
     float scroll_offset() const { return m_scroll_offset; }
+    Rect row_rect_at(size_t index) const;
     Rect scrollbar_track_rect() const;
     Rect scrollbar_thumb_rect() const;
 
@@ -208,10 +210,10 @@ public:
 private:
     void clamp_scroll();
 
-    Rect m_bounds{0.0f, 0.0f, 220.0f, 180.0f};
+    Rect m_bounds{0.0f, 0.0f, UiMetrics::kDefaultListBoxSize.x, UiMetrics::kDefaultListBoxSize.y};
     ListBoxMode m_mode{ListBoxMode::Standard};
     ListBoxStyle m_style;
-    float m_item_height{26.0f};
+    float m_item_height{26.0f}; // Default row height; see ListBoxStyle::kDefaultItemHeight
 
     std::vector<ListBoxItem> m_items;
     int m_selected_index{-1};
@@ -232,9 +234,9 @@ private:
 class CheckListBox : public ListBox {
 public:
     CheckListBox()
-        : ListBox(0.0f, 0.0f, 220.0f, 180.0f, ListBoxMode::CheckBox) {}
+        : ListBox(0.0f, 0.0f, UiMetrics::kDefaultListBoxSize.x, UiMetrics::kDefaultListBoxSize.y, ListBoxMode::CheckBox) {}
 
-    CheckListBox(float x, float y, float width = 220.0f, float height = 180.0f)
+    CheckListBox(float x, float y, float width = UiMetrics::kDefaultListBoxSize.x, float height = UiMetrics::kDefaultListBoxSize.y)
         : ListBox(x, y, width, height, ListBoxMode::CheckBox) {}
 
     explicit CheckListBox(const Rect& bounds)
