@@ -106,6 +106,21 @@ ContextMenu& ContextMenu::add_item(
     return *this;
 }
 
+ContextMenu& ContextMenu::add_submenu(const std::string& label, std::shared_ptr<ContextMenu> submenu, std::function<void()> callback) {
+    m_items.push_back(MenuItem::submenu(label, std::move(submenu), std::move(callback)));
+    return *this;
+}
+
+ContextMenu& ContextMenu::add_submenu(const std::string& label, std::shared_ptr<ContextMenu> submenu, const std::string& svg_path, std::function<void()> callback) {
+    m_items.push_back(MenuItem::submenu(label, std::move(submenu), svg_path, std::move(callback)));
+    return *this;
+}
+
+ContextMenu& ContextMenu::add_submenu(const std::string& label, std::shared_ptr<ContextMenu> submenu, IconType icon, std::function<void()> callback) {
+    m_items.push_back(MenuItem::submenu(label, std::move(submenu), icon, std::move(callback)));
+    return *this;
+}
+
 ContextMenu& ContextMenu::add_submenu(const std::string& label, std::function<void()> callback) {
     m_items.push_back(MenuItem::submenu(label, std::move(callback)));
     return *this;
@@ -160,6 +175,7 @@ ContextMenu& ContextMenu::add_separator() {
 }
 
 ContextMenu& ContextMenu::clear() {
+    close_active_child();
     m_items.clear();
     m_hovered_index = -1;
     return *this;
@@ -172,6 +188,251 @@ MenuItem& ContextMenu::last_item() {
     return m_items.back();
 }
 
+ContextMenu& ContextMenu::insert_item(size_t index, MenuItem item) {
+    if (index >= m_items.size()) {
+        m_items.push_back(std::move(item));
+    } else {
+        m_items.insert(m_items.begin() + index, std::move(item));
+    }
+    return *this;
+}
+
+ContextMenu& ContextMenu::insert_item(size_t index, const std::string& label, std::function<void()> callback) {
+    return insert_item(index, MenuItem::action(label, std::move(callback)));
+}
+
+ContextMenu& ContextMenu::insert_item(size_t index, const std::string& label, const std::string& svg_path, std::function<void()> callback) {
+    return insert_item(index, MenuItem::action(label, svg_path, std::move(callback)));
+}
+
+ContextMenu& ContextMenu::insert_item(size_t index, const std::string& label, IconType icon, std::function<void()> callback) {
+    return insert_item(index, MenuItem::action(label, icon, std::move(callback)));
+}
+
+ContextMenu& ContextMenu::insert_item_before(const std::string& target_label_or_id, MenuItem item) {
+    for (size_t i = 0; i < m_items.size(); ++i) {
+        if (m_items[i].id == target_label_or_id || m_items[i].label == target_label_or_id) {
+            return insert_item(i, std::move(item));
+        }
+    }
+    return add_item(std::move(item));
+}
+
+ContextMenu& ContextMenu::insert_item_after(const std::string& target_label_or_id, MenuItem item) {
+    for (size_t i = 0; i < m_items.size(); ++i) {
+        if (m_items[i].id == target_label_or_id || m_items[i].label == target_label_or_id) {
+            return insert_item(i + 1, std::move(item));
+        }
+    }
+    return add_item(std::move(item));
+}
+
+ContextMenu& ContextMenu::insert_submenu(size_t index, const std::string& label, std::shared_ptr<ContextMenu> submenu, std::function<void()> callback) {
+    return insert_item(index, MenuItem::submenu(label, std::move(submenu), std::move(callback)));
+}
+
+ContextMenu& ContextMenu::insert_submenu(size_t index, const std::string& label, std::shared_ptr<ContextMenu> submenu, const std::string& svg_path, std::function<void()> callback) {
+    return insert_item(index, MenuItem::submenu(label, std::move(submenu), svg_path, std::move(callback)));
+}
+
+ContextMenu& ContextMenu::insert_separator(size_t index) {
+    return insert_item(index, MenuItem::separator());
+}
+
+ContextMenu& ContextMenu::remove_item(size_t index) {
+    if (index < m_items.size()) {
+        if (m_active_child_index == static_cast<int>(index)) {
+            close_active_child();
+        } else if (m_active_child_index > static_cast<int>(index)) {
+            m_active_child_index--;
+        }
+        m_items.erase(m_items.begin() + index);
+    }
+    return *this;
+}
+
+ContextMenu& ContextMenu::remove_item(const std::string& label) {
+    for (size_t i = 0; i < m_items.size(); ++i) {
+        if (m_items[i].label == label) {
+            return remove_item(i);
+        }
+    }
+    return *this;
+}
+
+ContextMenu& ContextMenu::remove_item_by_id(const std::string& id) {
+    if (id.empty()) return *this;
+    for (size_t i = 0; i < m_items.size(); ++i) {
+        if (m_items[i].id == id) {
+            return remove_item(i);
+        }
+    }
+    return *this;
+}
+
+MenuItem* ContextMenu::find_item(const std::string& label) {
+    for (auto& item : m_items) {
+        if (item.label == label) return &item;
+    }
+    return nullptr;
+}
+
+const MenuItem* ContextMenu::find_item(const std::string& label) const {
+    for (const auto& item : m_items) {
+        if (item.label == label) return &item;
+    }
+    return nullptr;
+}
+
+MenuItem* ContextMenu::find_item_by_id(const std::string& id) {
+    if (id.empty()) return nullptr;
+    for (auto& item : m_items) {
+        if (item.id == id) return &item;
+    }
+    return nullptr;
+}
+
+const MenuItem* ContextMenu::find_item_by_id(const std::string& id) const {
+    if (id.empty()) return nullptr;
+    for (const auto& item : m_items) {
+        if (item.id == id) return &item;
+    }
+    return nullptr;
+}
+
+bool ContextMenu::has_item(const std::string& label) const {
+    return find_item(label) != nullptr;
+}
+
+bool ContextMenu::has_item_by_id(const std::string& id) const {
+    return find_item_by_id(id) != nullptr;
+}
+
+ContextMenu& ContextMenu::set_item_visible(size_t index, bool visible) {
+    if (index < m_items.size()) {
+        m_items[index].visible = visible;
+        if (!visible && m_active_child_index == static_cast<int>(index)) {
+            close_active_child();
+        }
+    }
+    return *this;
+}
+
+ContextMenu& ContextMenu::set_item_visible(const std::string& label, bool visible) {
+    if (auto* it = find_item(label)) {
+        it->visible = visible;
+        if (!visible && m_active_child_menu && m_active_child_menu == it->child_menu) {
+            close_active_child();
+        }
+    }
+    return *this;
+}
+
+ContextMenu& ContextMenu::set_item_visible_by_id(const std::string& id, bool visible) {
+    if (auto* it = find_item_by_id(id)) {
+        it->visible = visible;
+        if (!visible && m_active_child_menu && m_active_child_menu == it->child_menu) {
+            close_active_child();
+        }
+    }
+    return *this;
+}
+
+ContextMenu& ContextMenu::set_item_enabled(size_t index, bool enabled) {
+    if (index < m_items.size()) {
+        m_items[index].enabled = enabled;
+        if (!enabled && m_active_child_index == static_cast<int>(index)) {
+            close_active_child();
+        }
+    }
+    return *this;
+}
+
+ContextMenu& ContextMenu::set_item_enabled(const std::string& label, bool enabled) {
+    if (auto* it = find_item(label)) {
+        it->enabled = enabled;
+        if (!enabled && m_active_child_menu && m_active_child_menu == it->child_menu) {
+            close_active_child();
+        }
+    }
+    return *this;
+}
+
+ContextMenu& ContextMenu::set_item_enabled_by_id(const std::string& id, bool enabled) {
+    if (auto* it = find_item_by_id(id)) {
+        it->enabled = enabled;
+        if (!enabled && m_active_child_menu && m_active_child_menu == it->child_menu) {
+            close_active_child();
+        }
+    }
+    return *this;
+}
+
+size_t ContextMenu::visible_item_count() const {
+    size_t count = 0;
+    for (const auto& it : m_items) {
+        if (it.visible) count++;
+    }
+    return count;
+}
+
+void ContextMenu::close_active_child() {
+    if (m_active_child_menu) {
+        m_active_child_menu->hide();
+        m_active_child_menu = nullptr;
+        m_active_child_index = -1;
+    }
+}
+
+void ContextMenu::open_child_menu(int index) {
+    if (index < 0 || index >= static_cast<int>(m_items.size())) return;
+    auto& item = m_items[index];
+    if (!item.child_menu || !item.enabled) return;
+
+    if (m_active_child_menu == item.child_menu && m_active_child_menu->is_visible()) {
+        return;
+    }
+
+    close_active_child();
+
+    m_active_child_menu = item.child_menu;
+    m_active_child_index = index;
+
+    Rect row = row_rect_at(index);
+
+    if (m_font_ptr) {
+        m_active_child_menu->calculate_dimensions(*m_font_ptr);
+    } else {
+        m_active_child_menu->calculate_dimensions(Font());
+    }
+
+    float child_w = m_active_child_menu->bounds().width;
+    float child_h = m_active_child_menu->bounds().height;
+
+    // Standard Windows 10 placement: to the right of parent, overlapping 1px border by 2px
+    float child_x = m_bounds.x + m_bounds.width - 2.0f;
+    float child_y = row.y - m_active_child_menu->style().padding.top;
+
+    // Flip to left if overflowing screen on right
+    if (m_screen_w > 0.0f && (child_x + child_w > m_screen_w - UiMetrics::kMenuScreenMargin)) {
+        child_x = m_bounds.x - child_w + 2.0f;
+    }
+
+    // Clamp vertically if overflowing bottom
+    if (m_screen_h > 0.0f && (child_y + child_h > m_screen_h - UiMetrics::kMenuScreenMargin)) {
+        child_y = m_screen_h - child_h - UiMetrics::kMenuScreenMargin;
+    }
+    if (child_y < UiMetrics::kMenuScreenMargin) {
+        child_y = UiMetrics::kMenuScreenMargin;
+    }
+
+    if (m_font_ptr) {
+        m_active_child_menu->show(child_x, child_y, *m_font_ptr, m_screen_w, m_screen_h);
+    } else {
+        m_active_child_menu->show(child_x, child_y, m_screen_w, m_screen_h);
+    }
+}
+
 void ContextMenu::calculate_dimensions(const Font& font) {
     float max_label_w = 0.0f;
     float max_shortcut_w = 0.0f;
@@ -181,6 +442,7 @@ void ContextMenu::calculate_dimensions(const Font& font) {
     float total_h = m_style.padding.top + m_style.padding.bottom;
 
     for (const auto& item : m_items) {
+        if (!item.visible) continue;
         if (item.is_separator) {
             total_h += m_style.separator_height;
         } else {
@@ -188,7 +450,7 @@ void ContextMenu::calculate_dimensions(const Font& font) {
             if (item.icon != IconType::None || item.svg_icon != nullptr || !item.svg_path.empty()) {
                 has_any_icons = true;
             }
-            if (item.has_submenu) {
+            if (item.has_submenu || item.child_menu != nullptr) {
                 has_any_submenus = true;
             }
             Vec2 lbl_sz = font.measure_text(item.label, m_style.label_scale);
@@ -214,8 +476,12 @@ void ContextMenu::calculate_dimensions(const Font& font) {
 }
 
 Rect ContextMenu::row_rect_at(size_t index) const {
+    if (index >= m_items.size() || !m_items[index].visible) {
+        return Rect(0.0f, 0.0f, 0.0f, 0.0f);
+    }
     float cursor_y = m_bounds.y + m_style.padding.top;
     for (size_t i = 0; i < index && i < m_items.size(); ++i) {
+        if (!m_items[i].visible) continue;
         cursor_y += m_items[i].is_separator ? m_style.separator_height : m_style.item_height;
     }
     const float content_w = m_bounds.width - m_style.padding.left - m_style.padding.right;
@@ -230,11 +496,17 @@ void ContextMenu::show(float x, float y, float screen_width, float screen_height
 }
 
 void ContextMenu::show(float x, float y, const Font& font, float screen_width, float screen_height) {
+    if (m_before_show_cb) {
+        m_before_show_cb(*this);
+    }
+
     m_visible = true;
     m_hovered_index = -1;
     m_screen_w = screen_width;
     m_screen_h = screen_height;
+    m_font_ptr = &font;
 
+    close_active_child();
     calculate_dimensions(font);
 
     // Clamp the popup so it never leaves the visible window surface
@@ -264,6 +536,7 @@ void ContextMenu::hide() {
     if (m_visible) {
         m_visible = false;
         m_hovered_index = -1;
+        close_active_child();
         if (m_dismiss_cb) {
             m_dismiss_cb();
         }
@@ -273,52 +546,124 @@ void ContextMenu::hide() {
 bool ContextMenu::handle_mouse(const MouseEvent& ev) {
     if (!m_visible) return false;
 
-    // 1. Mouse move: track hovered menu item
+    // Prioritize active cascading child submenu if cursor is inside it
+    if (m_active_child_menu && m_active_child_menu->is_visible()) {
+        if (m_active_child_menu->bounds().contains(ev.position)) {
+            bool handled = m_active_child_menu->handle_mouse(ev);
+            if (!m_active_child_menu->is_visible()) {
+                hide(); // Child action executed: dismiss parent tree
+            }
+            return handled;
+        }
+
+        // If mouse is still on the parent row that spawned the child, keep child alive
+        if (m_active_child_index >= 0 && m_active_child_index < static_cast<int>(m_items.size())) {
+            Rect owner_row = row_rect_at(m_active_child_index);
+            if (owner_row.contains(ev.position)) {
+                m_hovered_index = m_active_child_index;
+                return true;
+            }
+        }
+    }
+
+    // 1. Mouse move
     if (ev.type == MouseEventType::Move) {
         if (!m_bounds.contains(ev.position)) {
-            m_hovered_index = -1;
+            if (!m_active_child_menu || !m_active_child_menu->is_visible()) {
+                m_hovered_index = -1;
+            }
             return false;
         }
 
         float cur_y = m_bounds.y + m_style.padding.top;
-        m_hovered_index = -1;
+        int found_idx = -1;
         for (size_t i = 0; i < m_items.size(); ++i) {
             const auto& item = m_items[i];
+            if (!item.visible) continue;
             float item_h = item.is_separator ? m_style.separator_height : m_style.item_height;
             Rect item_rect(m_bounds.x, cur_y, m_bounds.width, item_h);
 
             if (!item.is_separator && item.enabled && item_rect.contains(ev.position)) {
-                m_hovered_index = static_cast<int>(i);
+                found_idx = static_cast<int>(i);
                 break;
             }
             cur_y += item_h;
         }
+
+        m_hovered_index = found_idx;
+
+        if (found_idx >= 0) {
+            const auto& item = m_items[found_idx];
+            if (item.child_menu) {
+                if (m_active_child_index != found_idx) {
+                    open_child_menu(found_idx);
+                }
+            } else {
+                close_active_child();
+            }
+        }
+
         return true;
     }
 
-    // 2. Mouse button down: click outside dismisses menu
+    // 2. Mouse button down
     if (ev.type == MouseEventType::ButtonDown) {
-        if (!m_bounds.contains(ev.position)) {
+        bool in_parent = m_bounds.contains(ev.position);
+        bool in_child = m_active_child_menu && m_active_child_menu->is_visible() &&
+                        m_active_child_menu->bounds().contains(ev.position);
+
+        if (!in_parent && !in_child) {
             hide();
-            return false; // Allow click to pass through
+            return false; // Click outside dismisses menu tree
         }
-        return true; // Click inside menu is consumed
+        return true; // Click inside is consumed
     }
 
-    // 3. Mouse button up: item selection
+    // 3. Mouse button up (click)
     if (ev.type == MouseEventType::ButtonUp && ev.button == MouseButton::Left) {
+        if (m_active_child_menu && m_active_child_menu->is_visible() &&
+            m_active_child_menu->bounds().contains(ev.position)) {
+            bool handled = m_active_child_menu->handle_mouse(ev);
+            if (!m_active_child_menu->is_visible()) {
+                hide();
+            }
+            return handled;
+        }
+
         if (!m_bounds.contains(ev.position)) {
             hide();
             return false;
         }
 
-        if (m_hovered_index >= 0 && m_hovered_index < static_cast<int>(m_items.size())) {
-            const auto& item = m_items[m_hovered_index];
-            if (!item.is_separator && item.enabled && item.callback) {
-                auto cb = item.callback;
-                hide();
-                cb();
-                return true;
+        // If hovered index was not established via move, resolve row at click position
+        int active_idx = m_hovered_index;
+        if (active_idx < 0 || active_idx >= static_cast<int>(m_items.size())) {
+            float cur_y = m_bounds.y + m_style.padding.top;
+            for (size_t i = 0; i < m_items.size(); ++i) {
+                const auto& item = m_items[i];
+                if (!item.visible) continue;
+                float item_h = item.is_separator ? m_style.separator_height : m_style.item_height;
+                Rect item_rect(m_bounds.x, cur_y, m_bounds.width, item_h);
+                if (!item.is_separator && item.enabled && item_rect.contains(ev.position)) {
+                    active_idx = static_cast<int>(i);
+                    break;
+                }
+                cur_y += item_h;
+            }
+        }
+
+        if (active_idx >= 0 && active_idx < static_cast<int>(m_items.size())) {
+            const auto& item = m_items[active_idx];
+            if (!item.is_separator && item.enabled) {
+                if (item.child_menu) {
+                    open_child_menu(active_idx);
+                    return true;
+                } else if (item.callback) {
+                    auto cb = item.callback;
+                    hide();
+                    cb();
+                    return true;
+                }
             }
         }
         hide();
@@ -333,34 +678,94 @@ bool ContextMenu::handle_key(const KeyEvent& ev) {
 
     // Dismiss context menu on Escape key
     if (ev.key == KeyCode::Escape && ev.action == InputAction::Press) {
+        if (m_active_child_menu && m_active_child_menu->is_visible()) {
+            close_active_child();
+            return true;
+        }
         hide();
         return true;
     }
 
-    // Keyboard navigation (Down / Up arrows and Enter)
+    // If child submenu is active
+    if (m_active_child_menu && m_active_child_menu->is_visible()) {
+        // Left arrow closes the child and returns focus to parent
+        if (ev.key == KeyCode::Left && (ev.action == InputAction::Press || ev.action == InputAction::Repeat)) {
+            close_active_child();
+            return true;
+        }
+
+        // If child already has a focused item, route keyboard input directly to child
+        if (m_active_child_menu->hovered_index() >= 0) {
+            bool handled = m_active_child_menu->handle_key(ev);
+            if (!m_active_child_menu->is_visible()) {
+                hide();
+            }
+            return handled;
+        }
+
+        // If child is open but not yet focused: Right arrow or Enter focuses into the child
+        if ((ev.key == KeyCode::Right || ev.key == KeyCode::Enter) &&
+            (ev.action == InputAction::Press || ev.action == InputAction::Repeat)) {
+            for (size_t i = 0; i < m_active_child_menu->item_count(); ++i) {
+                if (m_active_child_menu->item_at(i).visible && !m_active_child_menu->item_at(i).is_separator && m_active_child_menu->item_at(i).enabled) {
+                    m_active_child_menu->set_hovered_index(static_cast<int>(i));
+                    break;
+                }
+            }
+            return true;
+        }
+    }
+
+    // Keyboard navigation in parent menu
     if (ev.action == InputAction::Press || ev.action == InputAction::Repeat) {
         if (ev.key == KeyCode::Down) {
             int next = m_hovered_index + 1;
-            while (next < static_cast<int>(m_items.size()) && (m_items[next].is_separator || !m_items[next].enabled)) {
+            while (next < static_cast<int>(m_items.size()) && (!m_items[next].visible || m_items[next].is_separator || !m_items[next].enabled)) {
                 next++;
             }
             if (next < static_cast<int>(m_items.size())) {
                 m_hovered_index = next;
+                if (m_items[next].child_menu) {
+                    open_child_menu(next);
+                } else {
+                    close_active_child();
+                }
             }
             return true;
         } else if (ev.key == KeyCode::Up) {
             int prev = m_hovered_index - 1;
-            while (prev >= 0 && (m_items[prev].is_separator || !m_items[prev].enabled)) {
+            while (prev >= 0 && (!m_items[prev].visible || m_items[prev].is_separator || !m_items[prev].enabled)) {
                 prev--;
             }
             if (prev >= 0) {
                 m_hovered_index = prev;
+                if (m_items[prev].child_menu) {
+                    open_child_menu(prev);
+                } else {
+                    close_active_child();
+                }
             }
             return true;
+        } else if (ev.key == KeyCode::Right) {
+            if (m_hovered_index >= 0 && m_hovered_index < static_cast<int>(m_items.size())) {
+                if (m_items[m_hovered_index].child_menu) {
+                    open_child_menu(m_hovered_index);
+                    if (m_active_child_menu) {
+                        m_active_child_menu->set_hovered_index(0);
+                    }
+                    return true;
+                }
+            }
         } else if (ev.key == KeyCode::Enter) {
             if (m_hovered_index >= 0 && m_hovered_index < static_cast<int>(m_items.size())) {
                 const auto& item = m_items[m_hovered_index];
-                if (!item.is_separator && item.enabled && item.callback) {
+                if (item.child_menu) {
+                    open_child_menu(m_hovered_index);
+                    if (m_active_child_menu) {
+                        m_active_child_menu->set_hovered_index(0);
+                    }
+                    return true;
+                } else if (!item.is_separator && item.enabled && item.callback) {
                     auto cb = item.callback;
                     hide();
                     cb();
@@ -376,6 +781,9 @@ bool ContextMenu::handle_key(const KeyEvent& ev) {
 
 void ContextMenu::update(float dt) {
     (void)dt;
+    if (m_active_child_menu && m_active_child_menu->is_visible()) {
+        m_active_child_menu->update(dt);
+    }
 }
 
 void ContextMenu::render(Renderer2D& renderer) {
@@ -401,6 +809,7 @@ void ContextMenu::render(Renderer2D& renderer) {
 
     bool has_any_icons = false;
     for (const auto& item : m_items) {
+        if (!item.visible) continue;
         if (item.icon != IconType::None || item.svg_icon != nullptr || !item.svg_path.empty()) {
             has_any_icons = true;
             break;
@@ -415,6 +824,7 @@ void ContextMenu::render(Renderer2D& renderer) {
 
     for (size_t i = 0; i < m_items.size(); ++i) {
         auto& item = m_items[i];
+        if (!item.visible) continue;
 
         if (item.is_separator) {
             // Inset separator line
@@ -485,7 +895,7 @@ void ContextMenu::render(Renderer2D& renderer) {
             // Label text placement
             const float text_x = item_rect.x + (align_icons ? m_style.icon_column_width : UiMetrics::kMenuTextInsetNoIcon);
             float text_right = item_rect.right() - 8.0f;
-            if (item.has_submenu) {
+            if (item.has_submenu || item.child_menu != nullptr) {
                 text_right -= 18.0f;
             }
             if (!item.shortcut.empty()) {
@@ -504,7 +914,7 @@ void ContextMenu::render(Renderer2D& renderer) {
             }
 
             // Submenu chevron
-            if (item.has_submenu) {
+            if (item.has_submenu || item.child_menu != nullptr) {
                 const float ch_sz = 9.0f;
                 const float ch_x = item_rect.right() - ch_sz - 8.0f;
                 const float ch_y = item_rect.y + (item_rect.height - ch_sz) * detail::kHalf;
@@ -515,7 +925,7 @@ void ContextMenu::render(Renderer2D& renderer) {
             if (!item.shortcut.empty()) {
                 const Vec2 sc_sz = renderer.font().measure_text(item.shortcut, m_style.shortcut_scale);
                 float sc_x = item_rect.right() - sc_sz.x - 8.0f;
-                if (item.has_submenu) {
+                if (item.has_submenu || item.child_menu != nullptr) {
                     sc_x -= 18.0f;
                 }
                 const Rect shortcut_bounds(sc_x, item_rect.y, sc_sz.x, item_rect.height);
@@ -524,6 +934,11 @@ void ContextMenu::render(Renderer2D& renderer) {
 
             cur_y += m_style.item_height;
         }
+    }
+
+    // 4. Render cascading child submenu on top
+    if (m_active_child_menu && m_active_child_menu->is_visible()) {
+        m_active_child_menu->render(renderer);
     }
 }
 

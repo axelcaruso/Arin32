@@ -912,11 +912,12 @@ Desktop-grade floating popup context menu triggered on right-click or programmat
 #### Key Capabilities
 
 - **1:1 Windows 10 Styling**: Square 0px corners, crisp 1px `#CCCCCC` outline, 22px item height, `#E5E5E5` hover highlight where text remains black `#000000`, and subtle 1px inset horizontal separators.
+- **Multi-Level Cascading Submenus**: Context menus support child submenus (`std::shared_ptr<ContextMenu>`). Hovering over a submenu row automatically cascades and displays the child menu adjacent to the parent row. Submenus flip horizontally to the left if space on the right is constrained.
 - **Native SVG Icon Support**: Menu items accept SVG filepaths (e.g., `"assets/icons/folder-open.svg"`) or `std::shared_ptr<SvgDocument>`. SVGs are automatically rasterized at HiDPI resolution and render with their full multicolor appearance.
 - **Bold Default Action**: Items marked as default (`is_default = true` or `add_default_item`) render with prominent bold text (modeled after "Abrir" / Open in Windows).
 - **Submenu Indicators**: Items marked with `has_submenu = true` or `add_submenu` render a right-aligned directional chevron (`>`) indicating an expandable submenu.
 - **Uniform Gutter Alignment**: When any item in the menu displays an icon, all labels are cleanly aligned to the icon column, matching operating system menus.
-- **Keyboard Navigation**: Supports full keyboard traversal using Arrow Down / Arrow Up to navigate, Enter to execute the highlighted action, and Escape to dismiss.
+- **Keyboard Navigation**: Supports full keyboard traversal. Arrow Down / Arrow Up navigate items, Arrow Right expands and enters child submenus, Arrow Left closes child submenus, Enter executes the highlighted action, and Escape dismisses.
 - **Elevation and Drop Shadow**: Rendered on the topmost overlay layer with an elevated Gaussian blur drop shadow.
 - **Screen Boundary Clamping**: Automatically adjusts popup placement coordinates when triggered near display edges, preventing the menu from clipping outside visible window bounds.
 - **Automatic Dismissal**: Dismisses automatically on outside mouse clicks, action execution, or when pressing the `Escape` key.
@@ -934,25 +935,42 @@ Represents an individual action entry, submenu, or visual separator:
 - `static MenuItem action(std::string label, IconType icon, std::string shortcut, std::function<void()> callback = nullptr)`
 - `static MenuItem submenu(std::string label, std::function<void()> callback = nullptr)`
 - `static MenuItem submenu(std::string label, const std::string& svg_path, std::function<void()> callback = nullptr)`
+- `static MenuItem submenu(std::string label, std::shared_ptr<ContextMenu> child, std::function<void()> callback = nullptr)`
+- `static MenuItem submenu(std::string label, std::shared_ptr<ContextMenu> child, const std::string& svg_path, std::function<void()> callback = nullptr)`
+- `static MenuItem submenu(std::string label, std::shared_ptr<ContextMenu> child, IconType icon, std::function<void()> callback = nullptr)`
 - `static MenuItem separator()`: Horizontal divider line.
+- `set_id(std::string identifier)`: Assigns a unique ID for programmatic lookups and toggles.
+- `set_visible(bool visible)`: Shows or hides the individual menu entry.
 - `set_default(bool def)`: Marks the item as the bold default action.
 - `set_submenu(bool sub)`: Toggles the right-pointing submenu chevron.
+- `set_submenu(std::shared_ptr<ContextMenu> child)`: Attaches a child submenu.
 - `set_enabled(bool en)`: Enables or disables the item (disabled items render in muted grey).
 
 ##### `ContextMenu`
 The floating menu widget itself:
-- `add_item(MenuItem item)`
-- `add_item(const std::string& label, std::function<void()> callback = nullptr)`
-- `add_item(const std::string& label, const std::string& svg_path, std::function<void()> callback = nullptr)`
-- `add_item(const std::string& label, const std::string& svg_path, const std::string& shortcut, std::function<void()> callback = nullptr)`
-- `add_item(const std::string& label, std::shared_ptr<SvgDocument> doc, std::function<void()> callback = nullptr)`
-- `add_default_item(const std::string& label, std::function<void()> callback = nullptr)`
-- `add_default_item(const std::string& label, const std::string& svg_path, std::function<void()> callback = nullptr)`
-- `add_submenu(const std::string& label, std::function<void()> callback = nullptr)`
-- `add_submenu(const std::string& label, const std::string& svg_path, std::function<void()> callback = nullptr)`
+- `add_item(...)`: Appends actions (plain, vector icon, SVG icon, shortcut text).
+- `add_default_item(...)`: Appends default bold action.
+- `add_submenu(...)`: Appends cascading submenu.
 - `add_separator()`: Inserts divider between action groups.
+- `insert_item(size_t index, MenuItem item)`: Inserts custom action at specific zero-indexed position.
+- `insert_item_before(const std::string& target, MenuItem item)`: Inserts action before target item (by label or ID).
+- `insert_item_after(const std::string& target, MenuItem item)`: Inserts action after target item (by label or ID).
+- `insert_submenu(size_t index, const std::string& label, std::shared_ptr<ContextMenu> child)`: Inserts child submenu at index.
+- `insert_separator(size_t index)`: Inserts divider line at index.
+- `remove_item(size_t index)`: Removes item at index.
+- `remove_item(const std::string& label)`: Removes item matching label.
+- `remove_item_by_id(const std::string& id)`: Removes item matching unique identifier.
+- `find_item(const std::string& label)` / `find_item_by_id(const std::string& id)`: Returns pointer to item for in-place modification.
+- `has_item(const std::string& label)` / `has_item_by_id(const std::string& id)`: Checks presence of item.
+- `set_item_visible(index / label / id, bool visible)`: Dynamically shows or hides items. Hidden items do not consume vertical space, cannot be hovered, and are skipped during keyboard navigation.
+- `set_item_enabled(index / label / id, bool enabled)`: Enables or disables items.
+- `visible_item_count()`: Returns the number of currently visible items.
+- `on_before_show(std::function<void(ContextMenu&)> cb)`: Dynamic hook invoked immediately prior to popup presentation to modify or filter items based on runtime state.
 - `clear()`: Removes all items.
 - `last_item()`: Returns reference to most recently appended item for fluent chaining.
+- `open_child_menu(int index)`: Opens cascading child submenu for item at index.
+- `close_active_child()`: Closes currently active child submenu.
+- `active_child_menu() const`: Returns pointer to active child submenu or nullptr.
 - `show(float x, float y, float screen_width = 0.0f, float screen_height = 0.0f)`: Opens and positions popup with automatic screen clamping.
 - `show(float x, float y, const Font& font, float screen_width = 0.0f, float screen_height = 0.0f)`: Preferred overload that measures labels with real font metrics.
 - `row_rect_at(size_t index) const`: Returns the row rectangle used for rendering and hit testing.
@@ -968,9 +986,12 @@ Preset visual configurations:
 - `ContextMenuStyle::dark()`: Deep dark mode (`#2B2B2B` card, `#404040` border, `#414141` hover, white text).
 - `ContextMenuStyle::rounded()`: Modern rounded variant with 6px corner radius and 26px item height.
 
-##### Application Integration via `arin::App`
+##### Application & Widget Integration
+- `widget->set_context_menu(menu)`: Attaches a dedicated custom context menu to any `IWidget` (Button, ListBox, Image, TextInput, etc.).
+- `widget->context_menu()`: Retrieves the widget-specific context menu.
 - `auto menu = app.create_context_menu()`: Allocates and registers a context menu managed by the app.
-- `app.set_default_context_menu(menu)`: Sets the menu opened automatically on right-clicks anywhere in the window.
+- `app.set_default_context_menu(menu)`: Sets the fallback menu opened automatically on right-clicks anywhere in the window.
+- Right-click dispatch: When right-clicking inside a widget with its own context menu, the widget-specific menu is opened. Otherwise, the window default context menu is shown.
 - `app.show_context_menu(menu, x, y)`: Opens a context menu programmatically at (x, y).
 - `app.close_context_menu()`: Dismisses currently open context menu.
 - `app.on_context_menu(cb)`: Registers a custom callback invoked with cursor coordinates `(x, y)` on right-clicks.

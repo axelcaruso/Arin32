@@ -29,11 +29,14 @@
 #ifndef ARIN32_WIDGET_HPP
 #define ARIN32_WIDGET_HPP
 
+#include <memory>
 #include "types.hpp"
 #include "input.hpp"
 #include "renderer.hpp"
 
 namespace arin {
+
+class ContextMenu;
 
 /**
  * @brief Abstract base interface for all visual and interactive user interface elements in Arin32.
@@ -121,6 +124,20 @@ public:
 
     /// @brief Returns true if widget is interactive.
     virtual bool is_enabled() const { return true; }
+
+    /// @brief Sets a dedicated context menu for this specific widget.
+    virtual IWidget& set_context_menu(std::shared_ptr<ContextMenu> menu) {
+        m_context_menu = std::move(menu);
+        return *this;
+    }
+
+    /// @brief Gets the dedicated context menu attached to this widget, or nullptr.
+    virtual std::shared_ptr<ContextMenu> context_menu() const {
+        return m_context_menu;
+    }
+
+protected:
+    std::shared_ptr<ContextMenu> m_context_menu{nullptr};
 };
 
 } // namespace arin

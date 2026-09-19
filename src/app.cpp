@@ -65,6 +65,17 @@ App::App(const std::string& title, int width, int height)
 
         // 2. Right-click context menu trigger
         if (ev.type == MouseEventType::ButtonDown && ev.button == MouseButton::Right) {
+            // Check top-most widget containing cursor for a dedicated context menu
+            for (auto it = m_widgets.rbegin(); it != m_widgets.rend(); ++it) {
+                if ((*it)->is_visible() && (*it)->bounds().contains(ev.position)) {
+                    if (auto widget_menu = (*it)->context_menu()) {
+                        show_context_menu(widget_menu, ev.position.x, ev.position.y);
+                        return;
+                    }
+                    break;
+                }
+            }
+
             if (m_context_menu_cb) {
                 m_context_menu_cb(ev.position.x, ev.position.y);
                 return;

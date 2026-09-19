@@ -43,10 +43,13 @@
 
 namespace arin {
 
+class ContextMenu;
+
 /**
  * @brief Represents an individual item, action, submenu indicator, or separator in a ContextMenu.
  */
 struct MenuItem {
+    std::string id;
     std::string label;
     IconType icon{IconType::None};
     std::shared_ptr<SvgDocument> svg_icon{nullptr};
@@ -55,8 +58,10 @@ struct MenuItem {
     std::string shortcut;
     bool is_separator{false};
     bool enabled{true};
+    bool visible{true};
     bool has_submenu{false};
     bool is_default{false};
+    std::shared_ptr<ContextMenu> child_menu{nullptr};
     std::function<void()> callback;
 
     static MenuItem action(std::string text, std::function<void()> cb = nullptr) {
@@ -152,6 +157,35 @@ struct MenuItem {
         return item;
     }
 
+    static MenuItem submenu(std::string text, std::shared_ptr<ContextMenu> sub, std::function<void()> cb = nullptr) {
+        MenuItem item;
+        item.label = std::move(text);
+        item.child_menu = std::move(sub);
+        item.has_submenu = (item.child_menu != nullptr);
+        item.callback = std::move(cb);
+        return item;
+    }
+
+    static MenuItem submenu(std::string text, std::shared_ptr<ContextMenu> sub, const std::string& svg_filepath, std::function<void()> cb = nullptr) {
+        MenuItem item;
+        item.label = std::move(text);
+        item.child_menu = std::move(sub);
+        item.svg_path = svg_filepath;
+        item.has_submenu = true;
+        item.callback = std::move(cb);
+        return item;
+    }
+
+    static MenuItem submenu(std::string text, std::shared_ptr<ContextMenu> sub, IconType ic, std::function<void()> cb = nullptr) {
+        MenuItem item;
+        item.label = std::move(text);
+        item.child_menu = std::move(sub);
+        item.icon = ic;
+        item.has_submenu = true;
+        item.callback = std::move(cb);
+        return item;
+    }
+
     static MenuItem separator() {
         MenuItem item;
         item.is_separator = true;
@@ -165,6 +199,12 @@ struct MenuItem {
 
     MenuItem& set_submenu(bool sub = true) {
         has_submenu = sub;
+        return *this;
+    }
+
+    MenuItem& set_submenu(std::shared_ptr<ContextMenu> sub) {
+        child_menu = std::move(sub);
+        has_submenu = (child_menu != nullptr);
         return *this;
     }
 
@@ -187,6 +227,16 @@ struct MenuItem {
 
     MenuItem& set_shortcut(const std::string& sc) {
         shortcut = sc;
+        return *this;
+    }
+
+    MenuItem& set_id(std::string identifier) {
+        id = std::move(identifier);
+        return *this;
+    }
+
+    MenuItem& set_visible(bool vis = true) {
+        visible = vis;
         return *this;
     }
 };
@@ -263,11 +313,12 @@ struct ContextMenuStyle {
  *
  * Features:
  * - 1:1 authentic Windows 10 desktop styling with crisp 1px border, soft drop shadow, and light grey hover.
+ * - Multi-level cascading submenus (opens adjacent child menu on hover).
  * - Native SVG icon support and vector icon badges.
  * - Submenu chevrons (>) and keyboard shortcut text (e.g. "Ctrl+C", "Ctrl+V").
  * - Bold rendering for default actions (e.g. "Abrir").
  * - Automatic screen boundary clamping so popups near display edges never bleed offscreen.
- * - Clicking outside or pressing Escape automatically dismisses the menu.
+ * - Clicking outside or pressing Escape automatically dismisses the menu tree.
  * - Z-order elevation (rendered as top-level application overlay).
  */
 class ContextMenu : public IWidget {
@@ -293,7 +344,11 @@ public:
     ContextMenu& add_item(const std::string& label, std::shared_ptr<SvgDocument> svg_doc, std::function<void()> callback = nullptr);
     ContextMenu& add_item(const std::string& label, std::shared_ptr<SvgDocument> svg_doc, const std::string& shortcut, std::function<void()> callback = nullptr);
 
-    // Submenu helpers
+    // Cascading Submenu helpers
+    ContextMenu& add_submenu(const std::string& label, std::shared_ptr<ContextMenu> submenu, std::function<void()> callback = nullptr);
+    ContextMenu& add_submenu(const std::string& label, std::shared_ptr<ContextMenu> submenu, const std::string& svg_path, std::function<void()> callback = nullptr);
+    ContextMenu& add_submenu(const std::string& label, std::shared_ptr<ContextMenu> submenu, IconType icon, std::function<void()> callback = nullptr);
+
     ContextMenu& add_submenu(const std::string& label, std::function<void()> callback = nullptr);
     ContextMenu& add_submenu(const std::string& label, const std::string& svg_path, std::function<void()> callback = nullptr);
     ContextMenu& add_submenu(const std::string& label, IconType icon, std::function<void()> callback = nullptr);
@@ -308,6 +363,41 @@ public:
     ContextMenu& add_separator();
     ContextMenu& clear();
 
+    // --- Dynamic Item Manipulation & Customization ---
+
+    ContextMenu& insert_item(size_t index, MenuItem item);
+    ContextMenu& insert_item(size_t index, const std::string& label, std::function<void()> callback = nullptr);
+    ContextMenu& insert_item(size_t index, const std::string& label, const std::string& svg_path, std::function<void()> callback = nullptr);
+    ContextMenu& insert_item(size_t index, const std::string& label, IconType icon, std::function<void()> callback = nullptr);
+
+    ContextMenu& insert_item_before(const std::string& target_label_or_id, MenuItem item);
+    ContextMenu& insert_item_after(const std::string& target_label_or_id, MenuItem item);
+
+    ContextMenu& insert_submenu(size_t index, const std::string& label, std::shared_ptr<ContextMenu> submenu, std::function<void()> callback = nullptr);
+    ContextMenu& insert_submenu(size_t index, const std::string& label, std::shared_ptr<ContextMenu> submenu, const std::string& svg_path, std::function<void()> callback = nullptr);
+    ContextMenu& insert_separator(size_t index);
+
+    ContextMenu& remove_item(size_t index);
+    ContextMenu& remove_item(const std::string& label);
+    ContextMenu& remove_item_by_id(const std::string& id);
+
+    MenuItem* find_item(const std::string& label);
+    const MenuItem* find_item(const std::string& label) const;
+    MenuItem* find_item_by_id(const std::string& id);
+    const MenuItem* find_item_by_id(const std::string& id) const;
+    bool has_item(const std::string& label) const;
+    bool has_item_by_id(const std::string& id) const;
+
+    ContextMenu& set_item_visible(size_t index, bool visible);
+    ContextMenu& set_item_visible(const std::string& label, bool visible);
+    ContextMenu& set_item_visible_by_id(const std::string& id, bool visible);
+
+    ContextMenu& set_item_enabled(size_t index, bool enabled);
+    ContextMenu& set_item_enabled(const std::string& label, bool enabled);
+    ContextMenu& set_item_enabled_by_id(const std::string& id, bool enabled);
+
+    size_t visible_item_count() const;
+
     size_t item_count() const { return m_items.size(); }
     MenuItem& item_at(size_t index) { return m_items.at(index); }
     const MenuItem& item_at(size_t index) const { return m_items.at(index); }
@@ -316,6 +406,11 @@ public:
     /// @brief Programmatically gets or sets the hovered item index (supports keyboard navigation).
     int hovered_index() const { return m_hovered_index; }
     void set_hovered_index(int index) { m_hovered_index = index; }
+
+    /// @brief Cascading child submenu management.
+    void open_child_menu(int index);
+    void close_active_child();
+    std::shared_ptr<ContextMenu> active_child_menu() const { return m_active_child_menu; }
 
     // --- Visibility and Popup Controls ---
 
@@ -361,9 +456,13 @@ public:
     /// @brief Dismiss callback invoked when the menu is closed.
     void on_dismiss(std::function<void()> cb) { m_dismiss_cb = std::move(cb); }
 
-private:
+    /// @brief Dynamic hook invoked immediately prior to popup presentation.
+    void on_before_show(std::function<void(ContextMenu&)> cb) { m_before_show_cb = std::move(cb); }
+
+    /// @brief Helper to calculate layout dimensions based on font metrics.
     void calculate_dimensions(const Font& font);
 
+private:
     Rect m_bounds{0.0f, 0.0f, 0.0f, 0.0f};
     ContextMenuStyle m_style;
     std::vector<MenuItem> m_items;
@@ -372,6 +471,12 @@ private:
     float m_screen_w{0.0f};
     float m_screen_h{0.0f};
     std::function<void()> m_dismiss_cb;
+    std::function<void(ContextMenu&)> m_before_show_cb;
+
+    // Cascading child submenu tracking
+    std::shared_ptr<ContextMenu> m_active_child_menu{nullptr};
+    int m_active_child_index{-1};
+    const Font* m_font_ptr{nullptr};
 };
 
 } // namespace arin

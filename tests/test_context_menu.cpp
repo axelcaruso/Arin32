@@ -28,6 +28,7 @@
 
 #include <gtest/gtest.h>
 #include <arin/context_menu.hpp>
+#include <arin/button.hpp>
 
 TEST(ArinContextMenuTest, DefaultConstruction) {
     arin::ContextMenu menu;
@@ -246,3 +247,325 @@ TEST(ArinContextMenuTest, FluentChainingAndLastItem) {
     EXPECT_TRUE(item.has_submenu);
     EXPECT_EQ(item.shortcut, "Ctrl+Shift+P");
 }
+
+TEST(ArinContextMenuTest, CascadingSubmenuAttachmentAndHierarchy) {
+    arin::ContextMenu parent;
+    auto child = std::make_shared<arin::ContextMenu>();
+    child->add_item("Sub-Action 1")
+         .add_item("Sub-Action 2");
+
+    parent.add_item("Parent Action 1")
+          .add_submenu("Send To", child, "assets/icons/arrow-right.svg")
+          .add_item("Parent Action 2");
+
+    EXPECT_EQ(parent.item_count(), 3u);
+    EXPECT_TRUE(parent.item_at(1).has_submenu);
+    EXPECT_EQ(parent.item_at(1).child_menu, child);
+    EXPECT_EQ(child->item_count(), 2u);
+}
+
+TEST(ArinContextMenuTest, CascadingSubmenuHoverOpeningAndClosing) {
+    arin::ContextMenu parent;
+    auto child = std::make_shared<arin::ContextMenu>();
+    child->add_item("Sub-Action 1")
+         .add_item("Sub-Action 2");
+
+    parent.add_item("Action 1")
+          .add_submenu("Nested Menu", child)
+          .add_item("Action 2");
+
+    parent.show(100.0f, 100.0f, 1024.0f, 768.0f);
+    EXPECT_TRUE(parent.is_visible());
+    EXPECT_EQ(parent.active_child_menu(), nullptr);
+
+    // Hover over item 1 ("Nested Menu")
+    float item1_y = parent.bounds().y + parent.style().padding.top + parent.style().item_height * 1.5f;
+    arin::MouseEvent hover_submenu = arin::MouseEvent::make_move(arin::Vec2(150.0f, item1_y));
+    parent.handle_mouse(hover_submenu);
+
+    EXPECT_NE(parent.active_child_menu(), nullptr);
+    EXPECT_TRUE(child->is_visible());
+    // Child should be positioned to the right of parent (m_bounds.x + m_bounds.width - 2.0f)
+    EXPECT_FLOAT_EQ(child->bounds().x, parent.bounds().x + parent.bounds().width - 2.0f);
+
+    // Hover over item 0 ("Action 1") which does not have a submenu -> child closes
+    float item0_y = parent.bounds().y + parent.style().padding.top + parent.style().item_height * 0.5f;
+    arin::MouseEvent hover_action0 = arin::MouseEvent::make_move(arin::Vec2(150.0f, item0_y));
+    parent.handle_mouse(hover_action0);
+
+    EXPECT_EQ(parent.active_child_menu(), nullptr);
+    EXPECT_FALSE(child->is_visible());
+}
+
+TEST(ArinContextMenuTest, CascadingSubmenuChildClickDismissesAll) {
+    arin::ContextMenu parent;
+    auto child = std::make_shared<arin::ContextMenu>();
+    int child_action_called = 0;
+    child->add_item("Sub-Action 1", [&child_action_called]() {
+        child_action_called = 1;
+    });
+
+    parent.add_submenu("Nested", child);
+    parent.show(100.0f, 100.0f, 1024.0f, 768.0f);
+
+    // Open child submenu
+    parent.open_child_menu(0);
+    EXPECT_TRUE(child->is_visible());
+
+    // Click inside child menu on Sub-Action 1
+    float child_item_y = child->bounds().y + child->style().padding.top + child->style().item_height * 0.5f;
+    arin::Vec2 click_pos(child->bounds().x + 20.0f, child_item_y);
+
+    arin::MouseEvent down_ev = arin::MouseEvent::make_button_down(click_pos, arin::MouseButton::Left);
+    EXPECT_TRUE(parent.handle_mouse(down_ev));
+
+    arin::MouseEvent up_ev = arin::MouseEvent::make_button_up(click_pos, arin::MouseButton::Left);
+    EXPECT_TRUE(parent.handle_mouse(up_ev));
+
+    EXPECT_EQ(child_action_called, 1);
+    EXPECT_FALSE(child->is_visible());
+    EXPECT_FALSE(parent.is_visible());
+}
+
+TEST(ArinContextMenuTest, CascadingSubmenuKeyboardNavigation) {
+    arin::ContextMenu parent;
+    auto child = std::make_shared<arin::ContextMenu>();
+    int child_action_called = 0;
+    child->add_item("Target Action", [&child_action_called]() {
+        child_action_called = 42;
+    });
+
+    parent.add_item("First")
+          .add_submenu("Sub", child);
+
+    parent.show(100.0f, 100.0f, 1024.0f, 768.0f);
+
+    // Press Down to navigate to item 0 ("First")
+    arin::KeyEvent down_ev;
+    down_ev.key = arin::KeyCode::Down;
+    down_ev.action = arin::InputAction::Press;
+    parent.handle_key(down_ev);
+    EXPECT_EQ(parent.hovered_index(), 0);
+
+    // Press Down again to navigate to item 1 ("Sub") -> auto opens submenu
+    parent.handle_key(down_ev);
+    EXPECT_EQ(parent.hovered_index(), 1);
+    EXPECT_TRUE(child->is_visible());
+
+    // Press Right arrow to focus into child submenu
+    arin::KeyEvent right_ev;
+    right_ev.key = arin::KeyCode::Right;
+    right_ev.action = arin::InputAction::Press;
+    parent.handle_key(right_ev);
+    EXPECT_EQ(child->hovered_index(), 0);
+
+    // Press Left arrow to close child and return to parent
+    arin::KeyEvent left_ev;
+    left_ev.key = arin::KeyCode::Left;
+    left_ev.action = arin::InputAction::Press;
+    parent.handle_key(left_ev);
+    EXPECT_FALSE(child->is_visible());
+    EXPECT_TRUE(parent.is_visible());
+
+    // Press Right to open again
+    parent.handle_key(right_ev);
+    EXPECT_TRUE(child->is_visible());
+
+    // Press Enter to execute child target action
+    arin::KeyEvent enter_ev;
+    enter_ev.key = arin::KeyCode::Enter;
+    enter_ev.action = arin::InputAction::Press;
+    parent.handle_key(enter_ev);
+
+    EXPECT_EQ(child_action_called, 42);
+    EXPECT_FALSE(child->is_visible());
+    EXPECT_FALSE(parent.is_visible());
+}
+
+TEST(ArinContextMenuTest, CascadingSubmenuScreenBoundaryFlipping) {
+    arin::ContextMenu parent;
+    auto child = std::make_shared<arin::ContextMenu>();
+    child->add_item("Overflow Test Item");
+
+    parent.add_submenu("Cascade", child);
+
+    // Position parent very close to the right edge of 800px screen
+    // Parent min_width is 180px, so parent will be at x ~ 610.
+    // Child placed to the right would be at 610 + 180 = 790, overflowing margin.
+    // It should flip to the left: child_x = parent.bounds.x - child_w + 2.0f
+    parent.show(610.0f, 100.0f, 800.0f, 600.0f);
+    parent.open_child_menu(0);
+
+    EXPECT_TRUE(child->is_visible());
+    EXPECT_LT(child->bounds().x, parent.bounds().x);
+    EXPECT_LE(child->bounds().right(), 800.0f);
+}
+
+TEST(ArinContextMenuTest, DynamicItemInsertionAndOrder) {
+    arin::ContextMenu menu;
+    menu.add_item("Item 1")
+        .add_item("Item 3");
+
+    // Insert "Item 2" at index 1
+    menu.insert_item(1, "Item 2");
+    EXPECT_EQ(menu.item_count(), 3u);
+    EXPECT_EQ(menu.item_at(0).label, "Item 1");
+    EXPECT_EQ(menu.item_at(1).label, "Item 2");
+    EXPECT_EQ(menu.item_at(2).label, "Item 3");
+
+    // Insert item at the very beginning (index 0)
+    menu.insert_item(0, "Item 0");
+    EXPECT_EQ(menu.item_count(), 4u);
+    EXPECT_EQ(menu.item_at(0).label, "Item 0");
+    EXPECT_EQ(menu.item_at(1).label, "Item 1");
+
+    // Insert item before "Item 3"
+    menu.insert_item_before("Item 3", arin::MenuItem::action("Item 2.5"));
+    EXPECT_EQ(menu.item_count(), 5u);
+    EXPECT_EQ(menu.item_at(3).label, "Item 2.5");
+    EXPECT_EQ(menu.item_at(4).label, "Item 3");
+
+    // Insert item after "Item 3"
+    menu.insert_item_after("Item 3", arin::MenuItem::action("Item 4"));
+    EXPECT_EQ(menu.item_count(), 6u);
+    EXPECT_EQ(menu.item_at(5).label, "Item 4");
+
+    // Insert separator at index 2
+    menu.insert_separator(2);
+    EXPECT_EQ(menu.item_count(), 7u);
+    EXPECT_TRUE(menu.item_at(2).is_separator);
+}
+
+TEST(ArinContextMenuTest, DynamicItemRemovalAndCleanup) {
+    arin::ContextMenu menu;
+    menu.add_item("Open")
+        .add_item("Cut")
+        .add_item("Copy")
+        .add_item("Delete");
+
+    EXPECT_EQ(menu.item_count(), 4u);
+
+    // Remove by index (Cut at index 1)
+    menu.remove_item(1);
+    EXPECT_EQ(menu.item_count(), 3u);
+    EXPECT_EQ(menu.item_at(0).label, "Open");
+    EXPECT_EQ(menu.item_at(1).label, "Copy");
+    EXPECT_EQ(menu.item_at(2).label, "Delete");
+
+    // Remove by label
+    menu.remove_item("Copy");
+    EXPECT_EQ(menu.item_count(), 2u);
+    EXPECT_EQ(menu.item_at(0).label, "Open");
+    EXPECT_EQ(menu.item_at(1).label, "Delete");
+
+    // Remove by ID
+    menu.add_item(arin::MenuItem::action("Custom").set_id("my_custom_id"));
+    EXPECT_TRUE(menu.has_item_by_id("my_custom_id"));
+    menu.remove_item_by_id("my_custom_id");
+    EXPECT_FALSE(menu.has_item_by_id("my_custom_id"));
+}
+
+TEST(ArinContextMenuTest, ItemVisibilityAndFiltering) {
+    arin::ContextMenu menu;
+    menu.add_item("Item 1")
+        .add_item(arin::MenuItem::action("Item 2").set_id("id_item_2"))
+        .add_item("Item 3");
+
+    EXPECT_EQ(menu.item_count(), 3u);
+    EXPECT_EQ(menu.visible_item_count(), 3u);
+
+    menu.show(100.0f, 100.0f);
+    float initial_height = menu.bounds().height;
+
+    // Hide Item 2 by ID
+    menu.set_item_visible_by_id("id_item_2", false);
+    EXPECT_EQ(menu.visible_item_count(), 2u);
+
+    // Recalculate dimensions via show
+    menu.show(100.0f, 100.0f);
+    float filtered_height = menu.bounds().height;
+    EXPECT_LT(filtered_height, initial_height);
+
+    // Hidden item has an empty row rect
+    arin::Rect hidden_rect = menu.row_rect_at(1);
+    EXPECT_FLOAT_EQ(hidden_rect.width, 0.0f);
+    EXPECT_FLOAT_EQ(hidden_rect.height, 0.0f);
+
+    // Visible item 3 has a valid row rect shifted up to where Item 2 was
+    arin::Rect item3_rect = menu.row_rect_at(2);
+    EXPECT_GT(item3_rect.height, 0.0f);
+    EXPECT_FLOAT_EQ(item3_rect.y, menu.bounds().y + menu.style().padding.top + menu.style().item_height);
+
+    // Re-enable Item 2
+    menu.set_item_visible("Item 2", true);
+    EXPECT_EQ(menu.visible_item_count(), 3u);
+}
+
+TEST(ArinContextMenuTest, ItemSearchAndFindById) {
+    arin::ContextMenu menu;
+    menu.add_item("Save")
+        .add_item(arin::MenuItem::action("Print").set_id("action_print"));
+
+    // Find by label
+    auto* save_item = menu.find_item("Save");
+    ASSERT_NE(save_item, nullptr);
+    EXPECT_EQ(save_item->label, "Save");
+    save_item->label = "Save As...";
+    EXPECT_EQ(menu.item_at(0).label, "Save As...");
+
+    // Find by ID
+    auto* print_item = menu.find_item_by_id("action_print");
+    ASSERT_NE(print_item, nullptr);
+    EXPECT_EQ(print_item->label, "Print");
+    EXPECT_TRUE(print_item->enabled);
+
+    // Disable item via helper
+    menu.set_item_enabled_by_id("action_print", false);
+    EXPECT_FALSE(print_item->enabled);
+}
+
+TEST(ArinContextMenuTest, WidgetSpecificContextMenuAttachment) {
+    arin::Button btn("My Button", 50.0f, 50.0f, 120.0f, 36.0f);
+    EXPECT_EQ(btn.context_menu(), nullptr);
+
+    auto custom_menu = std::make_shared<arin::ContextMenu>();
+    custom_menu->add_item("Button-Specific Action 1")
+               .add_item("Button-Specific Action 2");
+
+    btn.set_context_menu(custom_menu);
+    EXPECT_EQ(btn.context_menu(), custom_menu);
+    EXPECT_EQ(btn.context_menu()->item_count(), 2u);
+}
+
+TEST(ArinContextMenuTest, DynamicBeforeShowHookCustomization) {
+    arin::ContextMenu menu;
+    menu.add_item("Standard Action");
+
+    int dynamic_state = 100;
+    menu.on_before_show([&dynamic_state](arin::ContextMenu& m) {
+        if (!m.has_item_by_id("dynamic_item")) {
+            m.add_item(arin::MenuItem::action("Dynamic Value: " + std::to_string(dynamic_state))
+                           .set_id("dynamic_item"));
+        } else {
+            auto* item = m.find_item_by_id("dynamic_item");
+            if (item) {
+                item->label = "Dynamic Value: " + std::to_string(dynamic_state);
+            }
+        }
+    });
+
+    EXPECT_EQ(menu.item_count(), 1u);
+
+    // Call show -> on_before_show dynamically appends the custom item
+    menu.show(50.0f, 50.0f);
+    EXPECT_EQ(menu.item_count(), 2u);
+    EXPECT_EQ(menu.item_at(1).label, "Dynamic Value: 100");
+
+    // Change external state and show again -> dynamic label updates
+    dynamic_state = 250;
+    menu.show(50.0f, 50.0f);
+    EXPECT_EQ(menu.item_count(), 2u);
+    EXPECT_EQ(menu.item_at(1).label, "Dynamic Value: 250");
+}
+
+

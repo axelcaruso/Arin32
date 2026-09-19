@@ -506,19 +506,62 @@ int main(int argc, char** argv) {
     });
     ctx_menu->add_separator();
 
-    // Group 2: Shell access, security, history, library, pinning
-    ctx_menu->add_submenu("Conceder acceso a", "assets/icons/network.svg", [&]() {
-        global_status = "Menu Contextual: Conceder acceso a red/usuarios";
+    // Cascading Submenu 1: Conceder acceso a
+    auto access_menu = app.create_context_menu();
+    access_menu->add_item("Usuarios especificos...", "assets/icons/network.svg", [&]() {
+        global_status = "Menu Contextual -> Conceder acceso: Usuarios especificos";
     });
+    access_menu->add_separator();
+    access_menu->add_item("Quitar el acceso", "assets/icons/trash.svg", [&]() {
+        global_status = "Menu Contextual -> Conceder acceso: Quitar el acceso";
+    });
+
+    // Cascading Submenu 2: Incluir en biblioteca
+    auto library_menu = app.create_context_menu();
+    library_menu->add_item("Documentos", "assets/icons/folder-documents.svg", [&]() {
+        global_status = "Menu Contextual -> Biblioteca: Documentos";
+    });
+    library_menu->add_item("Imagenes", "assets/icons/folder-pictures.svg", [&]() {
+        global_status = "Menu Contextual -> Biblioteca: Imagenes";
+    });
+    library_menu->add_item("Musica", "assets/icons/folder-music.svg", [&]() {
+        global_status = "Menu Contextual -> Biblioteca: Musica";
+    });
+    library_menu->add_item("Videos", "assets/icons/folder-videos.svg", [&]() {
+        global_status = "Menu Contextual -> Biblioteca: Videos";
+    });
+    library_menu->add_separator();
+    library_menu->add_item("Crear una biblioteca nueva", "assets/icons/folder.svg", [&]() {
+        global_status = "Menu Contextual -> Biblioteca: Crear nueva biblioteca";
+    });
+
+    // Cascading Submenu 3: Enviar a
+    auto sendto_menu = app.create_context_menu();
+    sendto_menu->add_item("Carpeta comprimida (en zip)", "assets/icons/file-archive.svg", [&]() {
+        global_status = "Menu Contextual -> Enviar a: Carpeta comprimida (en zip)";
+    });
+    sendto_menu->add_item("Destinatario de correo", "assets/icons/file.svg", [&]() {
+        global_status = "Menu Contextual -> Enviar a: Destinatario de correo";
+    });
+    sendto_menu->add_item("Escritorio (crear acceso directo)", "assets/icons/folder-desktop.svg", [&]() {
+        global_status = "Menu Contextual -> Enviar a: Escritorio (acceso directo)";
+    });
+    sendto_menu->add_item("Documentos", "assets/icons/folder-documents.svg", [&]() {
+        global_status = "Menu Contextual -> Enviar a: Documentos";
+    });
+    sendto_menu->add_item("Unidad USB (D:)", "assets/icons/drive-harddisk.svg", [&]() {
+        global_status = "Menu Contextual -> Enviar a: Unidad USB";
+    });
+
+    // Group 2: Shell access, security, history, library, pinning
+    ctx_menu->add_submenu("Conceder acceso a", access_menu, "assets/icons/network.svg");
     ctx_menu->add_item("Escanear con Seguridad", "assets/icons/shield.svg", [&]() {
         global_status = "Menu Contextual: Escaneo de seguridad iniciado";
     });
     ctx_menu->add_item("Restaurar versiones anteriores", "assets/icons/refresh.svg", [&]() {
         global_status = "Menu Contextual: Restaurar versiones anteriores";
     });
-    ctx_menu->add_submenu("Incluir en biblioteca", "assets/icons/folder-documents.svg", [&]() {
-        global_status = "Menu Contextual: Incluir en biblioteca";
-    });
+    ctx_menu->add_submenu("Incluir en biblioteca", library_menu, "assets/icons/folder-documents.svg");
     ctx_menu->add_item("Anclar a Inicio", "assets/icons/pin.svg", [&]() {
         global_status = "Menu Contextual: Anclado a Inicio";
     });
@@ -528,9 +571,7 @@ int main(int argc, char** argv) {
     ctx_menu->add_separator();
 
     // Group 3: Send To
-    ctx_menu->add_submenu("Enviar a", "assets/icons/arrow-right.svg", [&]() {
-        global_status = "Menu Contextual: Enviar a...";
-    });
+    ctx_menu->add_submenu("Enviar a", sendto_menu, "assets/icons/arrow-right.svg");
     ctx_menu->add_separator();
 
     // Group 4: Cut & Copy
@@ -559,7 +600,36 @@ int main(int argc, char** argv) {
         global_status = "Menu Contextual: Propiedades";
     });
 
+    // Custom Extension: Insert user-defined action right before "Propiedades"
+    ctx_menu->insert_item_before("Propiedades",
+        arin::MenuItem::action("Abrir con Terminal Arin32", "assets/icons/file-code.svg", [&]() {
+            action_counter++;
+            global_status = "Menu Personalizado: Terminal Arin32 iniciado (Accion #" + std::to_string(action_counter) + ")";
+            std::cout << "[Arin32 Event] Custom Context Menu Action: Terminal Arin32\n";
+        }).set_id("open_terminal")
+    );
+
     app.set_default_context_menu(ctx_menu);
+
+    // Dedicated Widget-Specific Context Menu for the ListBox (roster_list)
+    auto roster_menu = app.create_context_menu();
+    roster_menu->add_item("Ver perfil del jugador", "assets/icons/folder-open.svg", [&]() {
+        action_counter++;
+        global_status = "Menu Roster: Ver perfil de " + current_player.name + " (Accion #" + std::to_string(action_counter) + ")";
+        std::cout << "[Arin32 Event] Roster context menu: View Profile\n";
+    });
+    roster_menu->add_item("Enviar mensaje de equipo", "assets/icons/network.svg", [&]() {
+        action_counter++;
+        global_status = "Menu Roster: Mensaje enviado a " + current_player.name + " (Accion #" + std::to_string(action_counter) + ")";
+        std::cout << "[Arin32 Event] Roster context menu: Send Message\n";
+    });
+    roster_menu->add_separator();
+    roster_menu->add_item("Quitar del roster activo", "assets/icons/trash.svg", "Del", [&]() {
+        action_counter++;
+        global_status = "Menu Roster: Jugador " + current_player.name + " retirado (Accion #" + std::to_string(action_counter) + ")";
+        std::cout << "[Arin32 Event] Roster context menu: Remove Player\n";
+    });
+    roster_list->set_context_menu(roster_menu);
 
     // -------------------------------------------------------------------------
     // 9. Custom Frame Callback: Cards, Shadows, Labels, and Visual Styling
@@ -927,6 +997,7 @@ int main(int argc, char** argv) {
             if (screenshot_context_menu && captured_frames >= 2) {
                 if (captured_frames == 2) {
                     app.show_context_menu(ctx_menu, 220.0f, 100.0f);
+                    ctx_menu->open_child_menu(10); // Open cascading "Enviar a" submenu
                 }
                 ctx_menu->set_hovered_index(10); // Row "Enviar a" hovered 1:1 like maxresdefault.jpg
             }
