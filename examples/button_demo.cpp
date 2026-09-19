@@ -92,8 +92,11 @@ int main(int argc, char** argv) {
     const float dialog_h = 210.0f;
     const float footer_y = dialog_y + 145.0f;
 
-    // Create an HBox aligned inside the dialog footer
-    auto dialog_actions = app.add_hbox(dialog_x + 65.0f, footer_y + 16.0f, 10.0f);
+    // Center HBox inside dialog footer so left and right margins are exactly equal:
+    // Total width = Save (85px) + 10px gap + Don't Save (100px) + 10px gap + Cancel (85px) = 290px
+    // Left margin = Right margin = (440px - 290px) / 2 = 75px
+    const float dialog_actions_x = dialog_x + (dialog_w - 290.0f) * 0.5f;
+    auto dialog_actions = app.add_hbox(dialog_actions_x, footer_y + 16.0f, 10.0f);
 
     auto save_btn = dialog_actions->add_button("Save", 85.0f, 32.0f);
     save_btn->set_style(arin::ButtonStyle::primary());
@@ -188,8 +191,9 @@ int main(int argc, char** argv) {
 
     // -------------------------------------------------------------------------
     // 4. Standard List Box - "Today's roster:" (from lb-roster.png)
+    //    Right column aligned with 40px right margin (matching 40px left margin)
     // -------------------------------------------------------------------------
-    const float roster_x = 520.0f;
+    const float roster_x = 544.0f;
     const float roster_y = 65.0f;
     const float roster_w = 230.0f;
     const float roster_h = 195.0f;
@@ -233,7 +237,7 @@ int main(int argc, char** argv) {
     // -------------------------------------------------------------------------
     // 5. CheckBox List - "Windows Features" (from ctrl-list-boxes.html)
     // -------------------------------------------------------------------------
-    const float chk_list_x = 520.0f;
+    const float chk_list_x = 544.0f;
     const float chk_list_y = 310.0f;
     const float chk_list_w = 440.0f;
     const float chk_list_h = 175.0f;
