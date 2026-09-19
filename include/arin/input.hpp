@@ -163,6 +163,182 @@ private:
     std::array<bool, static_cast<size_t>(MouseButton::Count)> m_mouse_buttons{false, false, false};
 };
 
+/**
+ * @brief Platform-agnostic keyboard scan codes and virtual keys.
+ * Aligned with standard ASCII and desktop layout values.
+ */
+enum class KeyCode : uint16_t {
+    Unknown = 0,
+    Space = 32,
+    Apostrophe = 39,
+    Comma = 44,
+    Minus = 45,
+    Period = 46,
+    Slash = 47,
+    Num0 = 48,
+    Num1 = 49,
+    Num2 = 50,
+    Num3 = 51,
+    Num4 = 52,
+    Num5 = 53,
+    Num6 = 54,
+    Num7 = 55,
+    Num8 = 56,
+    Num9 = 57,
+    Semicolon = 59,
+    Equal = 61,
+    A = 65,
+    B = 66,
+    C = 67,
+    D = 68,
+    E = 69,
+    F = 70,
+    G = 71,
+    H = 72,
+    I = 73,
+    J = 74,
+    K = 75,
+    L = 76,
+    M = 77,
+    N = 78,
+    O = 79,
+    P = 80,
+    Q = 81,
+    R = 82,
+    S = 83,
+    T = 84,
+    U = 85,
+    V = 86,
+    W = 87,
+    X = 88,
+    Y = 89,
+    Z = 90,
+    LeftBracket = 91,
+    Backslash = 92,
+    RightBracket = 93,
+    GraveAccent = 96,
+    Escape = 256,
+    Enter = 257,
+    Tab = 258,
+    Backspace = 259,
+    Insert = 260,
+    Delete = 261,
+    Right = 262,
+    Left = 263,
+    Down = 264,
+    Up = 265,
+    PageUp = 266,
+    PageDown = 267,
+    Home = 268,
+    End = 269,
+    CapsLock = 280,
+    ScrollLock = 281,
+    NumLock = 282,
+    PrintScreen = 283,
+    Pause = 284,
+    LeftShift = 340,
+    LeftControl = 341,
+    LeftAlt = 342,
+    LeftSuper = 343,
+    RightShift = 344,
+    RightControl = 345,
+    RightAlt = 346,
+    RightSuper = 347
+};
+
+/**
+ * @brief Bitfield flags representing keyboard modifier keys.
+ */
+enum class KeyModifier : uint8_t {
+    None    = 0,
+    Shift   = 1 << 0,
+    Control = 1 << 1,
+    Alt     = 1 << 2,
+    Super   = 1 << 3
+};
+
+inline KeyModifier operator|(KeyModifier a, KeyModifier b) {
+    return static_cast<KeyModifier>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
+}
+
+inline bool operator&(KeyModifier a, KeyModifier b) {
+    return (static_cast<uint8_t>(a) & static_cast<uint8_t>(b)) != 0;
+}
+
+/**
+ * @brief Discrete keyboard event (key press, release, repeat).
+ */
+struct KeyEvent {
+    KeyCode key{KeyCode::Unknown};
+    InputAction action{InputAction::Press};
+    uint8_t modifiers{0};
+
+    bool has_shift() const { return (modifiers & static_cast<uint8_t>(KeyModifier::Shift)) != 0; }
+    bool has_ctrl() const { return (modifiers & static_cast<uint8_t>(KeyModifier::Control)) != 0; }
+    bool has_alt() const { return (modifiers & static_cast<uint8_t>(KeyModifier::Alt)) != 0; }
+    bool has_super() const { return (modifiers & static_cast<uint8_t>(KeyModifier::Super)) != 0; }
+
+    static KeyEvent make_press(KeyCode key, uint8_t mods = 0) {
+        KeyEvent ev;
+        ev.key = key;
+        ev.action = InputAction::Press;
+        ev.modifiers = mods;
+        return ev;
+    }
+
+    static KeyEvent make_repeat(KeyCode key, uint8_t mods = 0) {
+        KeyEvent ev;
+        ev.key = key;
+        ev.action = InputAction::Repeat;
+        ev.modifiers = mods;
+        return ev;
+    }
+
+    static KeyEvent make_release(KeyCode key, uint8_t mods = 0) {
+        KeyEvent ev;
+        ev.key = key;
+        ev.action = InputAction::Release;
+        ev.modifiers = mods;
+        return ev;
+    }
+};
+
+/**
+ * @brief Character input event containing decoded Unicode codepoint and UTF-8 string.
+ */
+struct TextEvent {
+    uint32_t codepoint{0};
+    std::string text;
+
+    static TextEvent from_char(char c) {
+        TextEvent ev;
+        ev.codepoint = static_cast<uint32_t>(c);
+        ev.text = std::string(1, c);
+        return ev;
+    }
+
+    static TextEvent from_codepoint(uint32_t cp) {
+        TextEvent ev;
+        ev.codepoint = cp;
+        if (cp <= 0x7F) {
+            ev.text += static_cast<char>(cp);
+        } else if (cp <= 0x7FF) {
+            ev.text += static_cast<char>(0xC0 | ((cp >> 6) & 0x1F));
+            ev.text += static_cast<char>(0x80 | (cp & 0x3F));
+        } else if (cp <= 0xFFFF) {
+            ev.text += static_cast<char>(0xE0 | ((cp >> 12) & 0x0F));
+            ev.text += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+            ev.text += static_cast<char>(0x80 | (cp & 0x3F));
+        } else if (cp <= 0x10FFFF) {
+            ev.text += static_cast<char>(0xF0 | ((cp >> 18) & 0x07));
+            ev.text += static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
+            ev.text += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+            ev.text += static_cast<char>(0x80 | (cp & 0x3F));
+        }
+        return ev;
+    }
+};
+
 } // namespace arin
 
 #endif // ARIN32_INPUT_HPP

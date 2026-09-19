@@ -34,6 +34,8 @@ add_library(arin32
     src/renderer/image_pipeline.cpp
     src/renderer/renderer.cpp
     src/button.cpp
+    src/checkbox.cpp
+    src/text_input.cpp
     src/progress_bar.cpp
     src/list_box.cpp
     src/layout.cpp

@@ -103,6 +103,8 @@ bool GlfwPlatformBackend::create_window(const std::string& title, int width, int
     glfwSetMouseButtonCallback(m_window, mouse_button_callback);
     glfwSetScrollCallback(m_window, scroll_callback);
     glfwSetFramebufferSizeCallback(m_window, framebuffer_size_callback);
+    glfwSetKeyCallback(m_window, key_callback);
+    glfwSetCharCallback(m_window, char_callback);
 
     return true;
 }
@@ -148,8 +150,32 @@ void GlfwPlatformBackend::set_mouse_callback(MouseCallback cb) {
     m_mouse_cb = std::move(cb);
 }
 
+void GlfwPlatformBackend::set_key_callback(KeyCallback cb) {
+    m_key_cb = std::move(cb);
+}
+
+void GlfwPlatformBackend::set_char_callback(CharCallback cb) {
+    m_char_cb = std::move(cb);
+}
+
 void GlfwPlatformBackend::set_resize_callback(ResizeCallback cb) {
     m_resize_cb = std::move(cb);
+}
+
+void GlfwPlatformBackend::set_clipboard_text(const std::string& text) {
+    if (m_window) {
+        glfwSetClipboardString(m_window, text.c_str());
+    } else {
+        m_fallback_clipboard = text;
+    }
+}
+
+std::string GlfwPlatformBackend::get_clipboard_text() const {
+    if (m_window) {
+        const char* str = glfwGetClipboardString(m_window);
+        return str ? std::string(str) : std::string();
+    }
+    return m_fallback_clipboard;
 }
 
 // -----------------------------------------------------------------------------
@@ -201,6 +227,36 @@ void GlfwPlatformBackend::framebuffer_size_callback(GLFWwindow* win, int width, 
     }
 }
 
+void GlfwPlatformBackend::key_callback(GLFWwindow* win, int key, int /*scancode*/, int action, int mods) {
+    auto* self = static_cast<GlfwPlatformBackend*>(glfwGetWindowUserPointer(win));
+    if (!self || !self->m_key_cb) return;
+
+    uint8_t m = 0;
+    if (mods & GLFW_MOD_SHIFT)   m |= static_cast<uint8_t>(KeyModifier::Shift);
+    if (mods & GLFW_MOD_CONTROL) m |= static_cast<uint8_t>(KeyModifier::Control);
+    if (mods & GLFW_MOD_ALT)     m |= static_cast<uint8_t>(KeyModifier::Alt);
+    if (mods & GLFW_MOD_SUPER)   m |= static_cast<uint8_t>(KeyModifier::Super);
+
+    InputAction act = InputAction::Release;
+    if (action == GLFW_PRESS) act = InputAction::Press;
+    else if (action == GLFW_REPEAT) act = InputAction::Repeat;
+
+    KeyEvent ev;
+    ev.key = static_cast<KeyCode>(key);
+    ev.action = act;
+    ev.modifiers = m;
+
+    self->m_key_cb(ev);
+}
+
+void GlfwPlatformBackend::char_callback(GLFWwindow* win, unsigned int codepoint) {
+    auto* self = static_cast<GlfwPlatformBackend*>(glfwGetWindowUserPointer(win));
+    if (!self || !self->m_char_cb) return;
+
+    TextEvent ev = TextEvent::from_codepoint(codepoint);
+    self->m_char_cb(ev);
+}
+
 // -----------------------------------------------------------------------------
 // Window High-Level Wrapper Implementation
 // -----------------------------------------------------------------------------
@@ -246,10 +302,32 @@ void Window::on_mouse_event(IPlatformBackend::MouseCallback cb) {
     }
 }
 
+void Window::on_key_event(IPlatformBackend::KeyCallback cb) {
+    if (m_backend) {
+        m_backend->set_key_callback(std::move(cb));
+    }
+}
+
+void Window::on_char_event(IPlatformBackend::CharCallback cb) {
+    if (m_backend) {
+        m_backend->set_char_callback(std::move(cb));
+    }
+}
+
 void Window::on_resize(IPlatformBackend::ResizeCallback cb) {
     if (m_backend) {
         m_backend->set_resize_callback(std::move(cb));
     }
+}
+
+void Window::set_clipboard_text(const std::string& text) {
+    if (m_backend) {
+        m_backend->set_clipboard_text(text);
+    }
+}
+
+std::string Window::get_clipboard_text() const {
+    return m_backend ? m_backend->get_clipboard_text() : std::string();
 }
 
 } // namespace arin

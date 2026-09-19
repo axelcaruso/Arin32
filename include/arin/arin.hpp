@@ -47,6 +47,8 @@
 #include "renderer.hpp"
 #include "widget.hpp"
 #include "button.hpp"
+#include "checkbox.hpp"
+#include "text_input.hpp"
 #include "progress_bar.hpp"
 #include "list_box.hpp"
 #include "layout.hpp"

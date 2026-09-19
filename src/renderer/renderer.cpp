@@ -119,6 +119,9 @@ void Renderer2D::begin_frame(int viewport_width, int viewport_height) {
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
 
+    m_clip_stack.clear();
+    glDisable(GL_SCISSOR_TEST);
+
     m_text_pipeline->clear();
 }
 
@@ -263,6 +266,50 @@ void Renderer2D::draw_text_centered(
     draw_text(text, Vec2(text_x, text_y), color, scale);
 }
 
+void Renderer2D::push_clip_rect(const Rect& rect) {
+    flush();
+
+    Rect current = rect;
+    if (!m_clip_stack.empty()) {
+        const Rect& top = m_clip_stack.back();
+        float x1 = std::max(top.x, rect.x);
+        float y1 = std::max(top.y, rect.y);
+        float x2 = std::min(top.x + top.width, rect.x + rect.width);
+        float y2 = std::min(top.y + top.height, rect.y + rect.height);
+        current = Rect(x1, y1, std::max(0.0f, x2 - x1), std::max(0.0f, y2 - y1));
+    }
+    m_clip_stack.push_back(current);
+
+    int scissor_x = static_cast<int>(std::max(0.0f, current.x));
+    int scissor_y = m_viewport_height - static_cast<int>(current.y + current.height);
+    int scissor_w = static_cast<int>(std::max(0.0f, current.width));
+    int scissor_h = static_cast<int>(std::max(0.0f, current.height));
+
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(scissor_x, std::max(0, scissor_y), scissor_w, scissor_h);
+}
+
+void Renderer2D::pop_clip_rect() {
+    flush();
+
+    if (!m_clip_stack.empty()) {
+        m_clip_stack.pop_back();
+    }
+
+    if (m_clip_stack.empty()) {
+        glDisable(GL_SCISSOR_TEST);
+    } else {
+        const Rect& current = m_clip_stack.back();
+        int scissor_x = static_cast<int>(std::max(0.0f, current.x));
+        int scissor_y = m_viewport_height - static_cast<int>(current.y + current.height);
+        int scissor_w = static_cast<int>(std::max(0.0f, current.width));
+        int scissor_h = static_cast<int>(std::max(0.0f, current.height));
+
+        glEnable(GL_SCISSOR_TEST);
+        glScissor(scissor_x, std::max(0, scissor_y), scissor_w, scissor_h);
+    }
+}
+
 /**
  * @brief Centers text within a bounding box strictly clipped via glScissor.
  */
@@ -274,22 +321,9 @@ void Renderer2D::draw_text_centered_clipped(
 ) {
     if (bounds.width <= 0.0f || bounds.height <= 0.0f) return;
 
-    // Flush pending text before applying scissor
-    m_text_pipeline->flush(m_viewport_width, m_viewport_height, m_font.texture_id());
-
-    // Convert from top-left (Arin32) to bottom-left (OpenGL scissor coordinates)
-    int scissor_x = static_cast<int>(std::max(0.0f, bounds.x));
-    int scissor_y = m_viewport_height - static_cast<int>(bounds.y + bounds.height);
-    int scissor_w = static_cast<int>(bounds.width);
-    int scissor_h = static_cast<int>(bounds.height);
-
-    glEnable(GL_SCISSOR_TEST);
-    glScissor(scissor_x, std::max(0, scissor_y), std::max(0, scissor_w), std::max(0, scissor_h));
-
+    push_clip_rect(bounds);
     draw_text_centered(text, bounds, color, scale);
-    m_text_pipeline->flush(m_viewport_width, m_viewport_height, m_font.texture_id());
-
-    glDisable(GL_SCISSOR_TEST);
+    pop_clip_rect();
 }
 
 void Renderer2D::draw_image(

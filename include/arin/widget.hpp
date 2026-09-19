@@ -68,7 +68,42 @@ public:
     }
 
     /**
-     * @brief Advances time-dependent animations (e.g. shimmer sweeps).
+     * @brief Processes a keyboard key press, repeat, or release event.
+     * @param ev Key event data (key code, action, modifiers).
+     * @return true if consumed, false otherwise.
+     */
+    virtual bool handle_key(const KeyEvent& ev) {
+        (void)ev;
+        return false;
+    }
+
+    /**
+     * @brief Processes a text/character input event.
+     * @param ev Text event data (Unicode codepoint and UTF-8 string).
+     * @return true if consumed, false otherwise.
+     */
+    virtual bool handle_text(const TextEvent& ev) {
+        (void)ev;
+        return false;
+    }
+
+    /**
+     * @brief Invoked when this widget gains or loses keyboard input focus.
+     * @param focused true if focused, false if blurred.
+     */
+    virtual void on_focus(bool focused) {
+        (void)focused;
+    }
+
+    /**
+     * @brief Indicates whether this widget can accept keyboard input focus.
+     */
+    virtual bool is_focusable() const {
+        return false;
+    }
+
+    /**
+     * @brief Advances time-dependent animations (e.g. shimmer sweeps, caret blinking).
      * @param dt Elapsed delta time in seconds.
      */
     virtual void update(float dt) {

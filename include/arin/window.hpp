@@ -50,6 +50,8 @@ namespace arin {
 class IPlatformBackend {
 public:
     using MouseCallback = std::function<void(const MouseEvent&)>;
+    using KeyCallback = std::function<void(const KeyEvent&)>;
+    using CharCallback = std::function<void(const TextEvent&)>;
     using ResizeCallback = std::function<void(int width, int height)>;
 
     virtual ~IPlatformBackend() = default;
@@ -99,9 +101,29 @@ public:
     virtual void set_mouse_callback(MouseCallback cb) = 0;
 
     /**
+     * @brief Registers callback for keyboard key events.
+     */
+    virtual void set_key_callback(KeyCallback cb) = 0;
+
+    /**
+     * @brief Registers callback for character text input events.
+     */
+    virtual void set_char_callback(CharCallback cb) = 0;
+
+    /**
      * @brief Registers callback for window resize events.
      */
     virtual void set_resize_callback(ResizeCallback cb) = 0;
+
+    /**
+     * @brief Sets clipboard string content.
+     */
+    virtual void set_clipboard_text(const std::string& text) = 0;
+
+    /**
+     * @brief Retrieves string content currently stored in the clipboard.
+     */
+    virtual std::string get_clipboard_text() const = 0;
 };
 
 /**
@@ -120,7 +142,11 @@ public:
     Vec2 get_window_size() const override;
     Vec2 get_framebuffer_size() const override;
     void set_mouse_callback(MouseCallback cb) override;
+    void set_key_callback(KeyCallback cb) override;
+    void set_char_callback(CharCallback cb) override;
     void set_resize_callback(ResizeCallback cb) override;
+    void set_clipboard_text(const std::string& text) override;
+    std::string get_clipboard_text() const override;
 
     /// @brief Raw GLFW window handle if direct integration is required.
     GLFWwindow* handle() const { return m_window; }
@@ -130,11 +156,16 @@ private:
     static void mouse_button_callback(GLFWwindow* win, int button, int action, int mods);
     static void scroll_callback(GLFWwindow* win, double xoffset, double yoffset);
     static void framebuffer_size_callback(GLFWwindow* win, int width, int height);
+    static void key_callback(GLFWwindow* win, int key, int scancode, int action, int mods);
+    static void char_callback(GLFWwindow* win, unsigned int codepoint);
 
     GLFWwindow* m_window{nullptr};
     MouseCallback m_mouse_cb;
+    KeyCallback m_key_cb;
+    CharCallback m_char_cb;
     ResizeCallback m_resize_cb;
     InputState m_input_state;
+    mutable std::string m_fallback_clipboard;
 };
 
 /**
@@ -176,8 +207,20 @@ public:
     /// @brief Registers a handler for mouse interactions.
     void on_mouse_event(IPlatformBackend::MouseCallback cb);
 
+    /// @brief Registers a handler for keyboard key interactions.
+    void on_key_event(IPlatformBackend::KeyCallback cb);
+
+    /// @brief Registers a handler for character text interactions.
+    void on_char_event(IPlatformBackend::CharCallback cb);
+
     /// @brief Registers a handler for window resize notifications.
     void on_resize(IPlatformBackend::ResizeCallback cb);
+
+    /// @brief Sets clipboard string content.
+    void set_clipboard_text(const std::string& text);
+
+    /// @brief Gets clipboard string content.
+    std::string get_clipboard_text() const;
 
     /// @brief Direct access to underlying backend.
     IPlatformBackend* backend() { return m_backend.get(); }

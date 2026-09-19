@@ -41,6 +41,8 @@
 #include "texture.hpp"
 #include "image.hpp"
 #include "icon.hpp"
+#include "checkbox.hpp"
+#include "text_input.hpp"
 #include <memory>
 #include <vector>
 #include <functional>
@@ -239,6 +241,39 @@ public:
     );
 
     /**
+     * @brief Creates and adds an interactive CheckBox widget.
+     */
+    std::shared_ptr<CheckBox> add_checkbox(
+        const std::string& label,
+        float x,
+        float y,
+        bool checked = false
+    );
+    std::shared_ptr<CheckBox> add_checkbox(CheckBox checkbox);
+    std::shared_ptr<CheckBox> add_checkbox(std::shared_ptr<CheckBox> checkbox);
+
+    /**
+     * @brief Creates and adds an editable TextInput field widget.
+     */
+    std::shared_ptr<TextInput> add_text_input(
+        const std::string& initial_text,
+        float x,
+        float y,
+        float width = 200.0f,
+        float height = 32.0f
+    );
+    std::shared_ptr<TextInput> add_text_input(TextInput input);
+    std::shared_ptr<TextInput> add_text_input(std::shared_ptr<TextInput> input);
+
+    /**
+     * @brief Sets keyboard focus to a specific widget.
+     */
+    void set_focus(std::shared_ptr<IWidget> widget);
+
+    /// @brief Gets currently focused widget, or nullptr.
+    std::shared_ptr<IWidget> focused_widget() const { return m_focused_widget; }
+
+    /**
      * @brief Registers an optional custom rendering hook called every frame.
      *
      * Allows drawing custom shapes, text, or background elements alongside buttons.
@@ -282,6 +317,7 @@ private:
     Renderer2D m_renderer;
     Theme m_theme{Theme::dark()};
     std::vector<std::shared_ptr<IWidget>> m_widgets;
+    std::shared_ptr<IWidget> m_focused_widget{nullptr};
     FrameCallback m_custom_frame_cb;
     FrameCallback m_after_frame_cb;
     bool m_running{true};

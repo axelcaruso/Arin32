@@ -33,6 +33,7 @@
 #include "font.hpp"
 #include <string>
 #include <memory>
+#include <vector>
 #include <cstdint>
 
 namespace arin {
@@ -292,6 +293,17 @@ public:
     );
 
     /**
+     * @brief Pushes a hardware scissor clipping rectangle onto the clip stack.
+     * All subsequent draw commands will be strictly constrained inside this rect.
+     */
+    void push_clip_rect(const Rect& rect);
+
+    /**
+     * @brief Pops the active clipping rectangle from the stack, restoring the previous clip.
+     */
+    void pop_clip_rect();
+
+    /**
      * @brief Access the embedded Font instance for measurement and metrics.
      */
     Font& font() { return m_font; }
@@ -307,6 +319,7 @@ private:
     int m_viewport_height{0};
 
     Font m_font;
+    std::vector<Rect> m_clip_stack;
 
     // Modular Sub-Pipelines
     std::unique_ptr<renderer::RectPipeline> m_rect_pipeline;

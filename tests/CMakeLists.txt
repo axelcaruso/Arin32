@@ -3,6 +3,8 @@ find_package(GTest REQUIRED)
 add_executable(arin_tests
     test_types.cpp
     test_button.cpp
+    test_checkbox.cpp
+    test_text_input.cpp
     test_progress_bar.cpp
     test_list_box.cpp
     test_layout.cpp

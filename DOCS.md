@@ -13,19 +13,21 @@ Welcome to the official developer documentation for **Arin32**, a lightweight, h
    - [4.1 `arin::App`](#41-arinapp)
    - [4.2 `arin::Button`](#42-arinbutton)
    - [4.3 `arin::ButtonStyle`](#43-arinbuttonstyle)
-   - [4.4 `arin::ProgressBar` & `arin::ProgressBarMode`](#44-arinprogressbar--arinprogressbarmode)
-   - [4.5 `arin::ProgressBarStyle`](#45-arinprogressbarstyle)
-   - [4.6 `arin::IWidget` (Polymorphic Widget Base)](#46-ariniwidget-polymorphic-widget-base)
-   - [4.7 Automatic Layout Containers (`arin::Layout`, `arin::VBox`, `arin::HBox`)](#47-automatic-layout-containers-arinlayout-arinvbox-arinhbox)
-   - [4.8 List Box Widgets (`arin::ListBox`, `arin::CheckListBox`, `arin::ListBoxMode`, `arin::ListBoxStyle`)](#48-list-box-widgets-arinlistbox-arinchecklistbox-arinlistboxmode-arinlistboxstyle)
-   - [4.9 Image & Texture Support (`arin::Texture`, `arin::Image`, `arin::TextureFilter`, `arin::ImageScaleMode`)](#49-image--texture-support-arintexture-arinimage-arintexturefilter-arinimagescalemode)
-   - [4.10 Vector Icons (`arin::Icon`, `arin::IconType`)](#410-vector-icons-arinicon-arinicontype)
-   - [4.11 `arin::Theme`](#411-arintheme)
-   - [4.12 `arin::Renderer2D`](#412-arinrenderer2d)
-   - [4.13 `arin::Font`](#413-arinfont)
-   - [4.14 `arin::Window` & `arin::IPlatformBackend`](#414-arinwindow--ariniplatformbackend)
-   - [4.15 Geometric & Color Types (`Vec2`, `Rect`, `Color`, `Padding`)](#415-geometric--color-types)
-   - [4.16 Input System (`InputState`, `MouseEvent`, `MouseButton`, `InputAction`)](#416-input-system)
+   - [4.4 `arin::CheckBox` & `arin::CheckBoxStyle`](#44-arincheckbox--arincheckboxstyle)
+   - [4.5 `arin::TextInput` (`arin::TextBox`) & `arin::TextInputStyle`](#45-arintextinput-arintextbox--arintextinputstyle)
+   - [4.6 `arin::ProgressBar` & `arin::ProgressBarMode`](#46-arinprogressbar--arinprogressbarmode)
+   - [4.7 `arin::ProgressBarStyle`](#47-arinprogressbarstyle)
+   - [4.8 `arin::IWidget` (Polymorphic Widget Base)](#48-ariniwidget-polymorphic-widget-base)
+   - [4.9 Automatic Layout Containers (`arin::Layout`, `arin::VBox`, `arin::HBox`)](#49-automatic-layout-containers-arinlayout-arinvbox-arinhbox)
+   - [4.10 List Box Widgets (`arin::ListBox`, `arin::CheckListBox`, `arin::ListBoxMode`, `arin::ListBoxStyle`)](#410-list-box-widgets-arinlistbox-arinchecklistbox-arinlistboxmode-arinlistboxstyle)
+   - [4.11 Image & Texture Support (`arin::Texture`, `arin::Image`, `arin::TextureFilter`, `arin::ImageScaleMode`)](#411-image--texture-support-arintexture-arinimage-arintexturefilter-arinimagescalemode)
+   - [4.12 Vector Icons (`arin::Icon`, `arin::IconType`)](#412-vector-icons-arinicon-arinicontype)
+   - [4.13 `arin::Theme`](#413-arintheme)
+   - [4.14 `arin::Renderer2D`](#414-arinrenderer2d)
+   - [4.15 `arin::Font`](#415-arinfont)
+   - [4.16 `arin::Window` & `arin::IPlatformBackend`](#416-arinwindow--ariniplatformbackend)
+   - [4.17 Geometric & Color Types (`Vec2`, `Rect`, `Color`, `Padding`)](#417-geometric--color-types)
+   - [4.18 Input System (`InputState`, `MouseEvent`, `KeyEvent`, `TextEvent`, `KeyCode`, `KeyModifier`)](#418-input-system)
 5. [Building, Running, and Testing](#5.building-running-and-testing)
    - [Linux Build](#linux-build)
    - [FreeBSD Build](#freebsd-build)
@@ -198,6 +200,14 @@ The central coordinator managing window lifecycle, OpenGL context initialization
   Creates, registers, and returns an Image widget loaded directly from an image file (PNG, JPG, BMP, TGA).
 - `std::shared_ptr<Icon> add_icon(IconType icon, float x, float y, float size = 16.0f, const Color& color = Color(240, 240, 240))`:
   Creates, registers, and returns a crisp vector system icon widget.
+- `std::shared_ptr<CheckBox> add_checkbox(const std::string& label, float x, float y, bool checked = false)`:
+  Creates, registers, and returns an interactive two-state CheckBox widget.
+- `std::shared_ptr<TextInput> add_text_input(const std::string& initial_text, float x, float y, float width = 200.0f, float height = 32.0f)`:
+  Creates, registers, and returns an editable TextInput (TextBox) widget with keyboard focus routing and clipboard integration.
+- `void set_focus(std::shared_ptr<IWidget> widget)`:
+  Sets active keyboard input focus to the specified widget (or clears focus if passed `nullptr`).
+- `std::shared_ptr<IWidget> focused_widget() const`:
+  Gets the currently focused widget, or `nullptr`.
 - `void on_frame(FrameCallback cb)`:
   Registers a user rendering callback executed every frame before buttons are drawn (ideal for titles, backgrounds, panels).
 - `void on_after_frame(FrameCallback cb)`:
@@ -312,7 +322,88 @@ Defines colors, borders, and dimensions across all button states.
 
 ---
 
-### 4.4 `arin::ProgressBar` & `arin::ProgressBarMode`
+### 4.4 `arin::CheckBox` & `arin::CheckBoxStyle`
+
+A standalone, fully interactive two-state checkbox widget featuring crisp GPU-drawn checkmarks (`✓`), fluid hover animations, automatic content measurement, and seamless integration with layouts.
+
+```cpp
+#include <arin/checkbox.hpp>
+```
+
+#### Constructors
+- `CheckBox(std::string label = "CheckBox", float x = 0.0f, float y = 0.0f, bool checked = false)`:
+  Constructs a checkbox with accompanying text label, coordinates, and initial toggle state.
+
+#### Methods & Chaining
+- `bool is_checked() const`: Queries whether the box is checked.
+- `CheckBox& set_checked(bool checked)`: Sets checked state and fires `on_toggled` if state changed.
+- `CheckBox& toggle()`: Inverts current check state.
+- `CheckBox& on_toggled(ToggleCallback cb)`: Registers callback `std::function<void(bool is_checked)>` fired whenever state toggles.
+- `const std::string& label() const`: Gets label text.
+- `CheckBox& set_label(std::string label)`: Sets label text.
+- `CheckBox& fit_to_content(const Font& font)`: Automatically resizes widget bounding box to tightly enclose square box and measured label text.
+- `CheckBox& set_style(const CheckBoxStyle& style)`: Applies visual style configuration.
+- `CheckBox& set_enabled(bool enabled)`: Sets interactive state.
+- `CheckBox& set_visible(bool visible)`: Sets visibility.
+
+#### Visual Styling (`CheckBoxStyle`)
+- `float box_size{16.0f}`: Width and height of checkable box.
+- `float corner_radius{3.0f}`: Box corner rounding radius.
+- `float text_spacing{8.0f}`: Gap between box and text.
+- `float text_scale{0.92f}`: Typography scale factor.
+- `Color box_background`: Fill color when unchecked (`#FFFFFF`).
+- `Color box_border`: Border color when unchecked (`#9CA3AF`).
+- `Color checked_fill`: Accent fill when checked (`#0067C0`).
+- `Color checkmark_color`: Stroke color of the checkmark (`#FFFFFF`).
+- `Color hover_border`: Border outline highlight on hover (`#4B5563`).
+- `Color disabled_color`: Dimmed border and text color when disabled.
+
+---
+
+### 4.5 `arin::TextInput` (`arin::TextBox`) & `arin::TextInputStyle`
+
+A complete, modern editable text field widget built with deep keyboard event dispatching, focus management, hardware scissor clipping, and clipboard integration.
+
+```cpp
+#include <arin/text_input.hpp>
+```
+
+#### Key Capabilities
+1. **Focus & Caret**: Clicking gives keyboard focus; renders an animated 500ms blinking vertical insertion caret that resets to visible during typing or navigation.
+2. **Text Containment & Scrolling**: Dynamic horizontal scroll offset (`m_scroll_offset`) and hardware scissor clipping (`Renderer2D::push_clip_rect`) guarantee typed text **never bleeds outside the input box**.
+3. **Cursor Navigation**: Left / Right arrow navigation, word navigation via `Ctrl + Left / Right`, and `Home` / `End` key jumping.
+4. **Text Selection**: Mouse click-and-drag selection, `Shift + Arrow / Home / End`, or `Ctrl + A` to select all with accent blue highlight.
+5. **Editing**: Backspace and Delete keys (operates on single characters or selected ranges), Enter key submission (`on_submit`).
+6. **Clipboard Integration**: Native `Ctrl+C` (copy), `Ctrl+X` (cut), and `Ctrl+V` (paste) linked automatically to system clipboard through `Window`.
+7. **Placeholder & Masking**: Custom placeholder text rendered when empty; optional password masking (`set_password(true)`).
+
+#### Constructors
+- `TextInput(std::string initial_text = "", float x = 0.0f, float y = 0.0f, float width = 200.0f, float height = 32.0f)`
+
+#### Methods & Chaining
+- `const std::string& text() const` / `TextInput& set_text(std::string text)`: Text accessors.
+- `const std::string& placeholder() const` / `TextInput& set_placeholder(std::string placeholder)`: Placeholder text.
+- `size_t cursor_position() const` / `TextInput& set_cursor_position(size_t pos)`: Caret index.
+- `bool has_selection() const` / `std::string selected_text() const`: Selection queries.
+- `TextInput& select_all()` / `TextInput& clear_selection()` / `bool delete_selection()`: Selection actions.
+- `TextInput& insert_text(const std::string& str)`: Inserts string at cursor (replacing selection if active).
+- `TextInput& set_read_only(bool read_only)` / `bool is_read_only() const`: Read-only toggle.
+- `TextInput& set_password(bool password, char mask = '*')`: Password masking mode.
+- `bool is_focused() const` / `TextInput& set_focused(bool focused)`: Focus state.
+- `TextInput& on_text_changed(TextChangeCallback cb)`: Callback `std::function<void(const std::string& text)>`.
+- `TextInput& on_submit(SubmitCallback cb)`: Callback `std::function<void(const std::string& text)>` fired on Enter key.
+- `TextInput& set_clipboard_provider(ClipboardGetCallback get_cb, ClipboardSetCallback set_cb)`: Custom clipboard hook.
+
+#### Visual Styling (`TextInputStyle`)
+- `float corner_radius{4.0f}`, `float border_width{1.0f}`, `float focus_border_width{2.0f}`.
+- `float padding_x{10.0f}`, `float text_scale{0.92f}`, `float cursor_width{1.5f}`.
+- `Color background_color`, `Color border_color`, `Color hover_border_color`.
+- `Color focus_border_color`: Windows 10 Accent Blue (`#0067C0`).
+- `Color selection_color`: Semi-transparent blue fill (`rgba(0, 103, 192, 75)`).
+
+---
+
+### 4.6 `arin::ProgressBar` & `arin::ProgressBarMode`
 
 A modern, hardware-accelerated progress bar widget designed to strictly match the flat aesthetic of Windows 10 with 1:1 visual concordance, subtle 1.0px borders, and GPU-driven animations.
 
@@ -364,7 +455,7 @@ A modern, hardware-accelerated progress bar widget designed to strictly match th
 
 ---
 
-### 4.5 `arin::ProgressBarStyle`
+### 4.7 `arin::ProgressBarStyle`
 
 Visual configuration for `ProgressBar` matching Windows 10 flat modern design specifications.
 
@@ -387,9 +478,9 @@ Visual configuration for `ProgressBar` matching Windows 10 flat modern design sp
 
 ---
 
-### 4.6 `arin::IWidget` (Polymorphic Widget Base)
+### 4.8 `arin::IWidget` (Polymorphic Widget Base)
 
-Base interface for all UI elements in Arin32 (`Button`, `ProgressBar`, `ListBox`, `CheckListBox`, `Layout`). Enables uniform lifecycle management, event dispatching, and container nesting.
+Base interface for all UI elements in Arin32 (`Button`, `CheckBox`, `TextInput`, `ProgressBar`, `ListBox`, `CheckListBox`, `Image`, `Icon`, `Layout`). Enables uniform lifecycle management, event dispatching, and container nesting.
 
 ```cpp
 #include <arin/widget.hpp>
@@ -401,12 +492,18 @@ Base interface for all UI elements in Arin32 (`Button`, `ProgressBar`, `ListBox`
 - `virtual IWidget& set_position(float x, float y)`: Moves widget.
 - `virtual IWidget& set_size(float width, float height)`: Resizes widget.
 - `virtual bool handle_mouse(const MouseEvent& ev)`: Dispatches mouse move, click, or scroll events. Returns `true` if consumed.
+- `virtual bool handle_key(const KeyEvent& ev)`: Processes keyboard key press, repeat, or release events. Returns `true` if consumed.
+- `virtual bool handle_text(const TextEvent& ev)`: Processes character text input events (Unicode codepoint and UTF-8 string).
+- `virtual void on_focus(bool focused)`: Invoked when the widget gains or loses keyboard input focus.
+- `virtual bool is_focusable() const`: Indicates whether this widget can accept keyboard input focus (default: `false`).
 - `virtual void update(float dt)`: Advances widget animations and timers.
 - `virtual void render(Renderer2D& renderer) = 0`: Draws widget to OpenGL frame.
+- `virtual bool is_visible() const`: Returns `true` if widget is visible.
+- `virtual bool is_enabled() const`: Returns `true` if widget is interactive.
 
 ---
 
-### 4.7 Automatic Layout Containers (`arin::Layout`, `arin::VBox`, `arin::HBox`)
+### 4.9 Automatic Layout Containers (`arin::Layout`, `arin::VBox`, `arin::HBox`)
 
 Eliminates manual pixel coordinate calculations by automatically arranging child widgets linearly with customizable spacing, padding, and cross-axis alignment. Reaches Flutter- and Qt-level ergonomics.
 
@@ -442,9 +539,9 @@ Eliminates manual pixel coordinate calculations by automatically arranging child
 
 ---
 
-### 4.8 List Box Widgets (`arin::ListBox`, `arin::CheckListBox`, `arin::ListBoxMode`, `arin::ListBoxStyle`)
+### 4.10 List Box Widgets (`arin::ListBox`, `arin::CheckListBox`, `arin::ListBoxMode`, `arin::ListBoxStyle`)
 
-Implements modern Windows 10 style list boxes with single-selection, multiple-selection check boxes, smooth hardware-clipped item scrolling, customizable styles and themes, and draggable scrollbars.
+High-performance, scrollable single-selection and checkbox lists designed after Windows 7/10 dialog lists.
 
 ```cpp
 #include <arin/list_box.hpp>
@@ -502,7 +599,7 @@ Full visual customization of card borders, row highlights, text colors, checkbox
 
 ---
 
-### 4.9 Image & Texture Support (`arin::Texture`, `arin::Image`, `arin::TextureFilter`, `arin::ImageScaleMode`)
+### 4.11 Image & Texture Support (`arin::Texture`, `arin::Image`, `arin::TextureFilter`, `arin::ImageScaleMode`)
 
 Arin32 includes a built-in, OS-agnostic texture loading engine and GPU image pipeline. Using the embedded `stb_image` decoder, images in standard formats (PNG, JPEG, BMP, TGA) are loaded directly into OpenGL 2D textures without dynamic library dependencies.
 
@@ -543,7 +640,7 @@ Conforms to the `IWidget` interface, allowing direct integration into layouts (`
 
 ---
 
-### 4.10 Vector Icons (`arin::Icon`, `arin::IconType`)
+### 4.12 Vector Icons (`arin::Icon`, `arin::IconType`)
 
 Arin32 features a mathematically defined vector icon system. Icons are rendered via hardware-accelerated Signed Distance Fields and thick anti-aliased geometric primitives. They scale losslessly to any resolution or DPI and adapt instantly to any color tint.
 
@@ -575,7 +672,7 @@ Arin32 features a mathematically defined vector icon system. Icons are rendered 
 
 ---
 
-### 4.11 `arin::Theme`
+### 4.13 `arin::Theme`
 
 Global theme definition holding window background clear colors and default button styles.
 
@@ -585,7 +682,7 @@ Global theme definition holding window background clear colors and default butto
 
 ---
 
-### 4.12 `arin::Renderer2D`
+### 4.14 `arin::Renderer2D`
 
 Hardware-accelerated 2D rendering engine powered by OpenGL 3.3 Core profile shaders. Internally organized into modular, decoupled sub-pipelines located under `src/renderer/`:
 - **`shader_util`**: Centralized shader compilation, program linking, and 2D orthographic projection matrix calculation.
@@ -593,7 +690,7 @@ Hardware-accelerated 2D rendering engine powered by OpenGL 3.3 Core profile shad
 - **`text_pipeline`**: Dynamic vertex streaming and batching for proportional typography with embedded Open Sans font atlas.
 - **`progress_pipeline`**: Windows 10 modern progress bars with animated cosine shimmer sweeps and traveling marquee chunks.
 - **`image_pipeline`**: Textured 2D quads with fragment-shader SDF rounded corners, UV mapping, and color modulation.
-- **`renderer`**: High-level orchestrator managing viewport state, frame lifecycles (`begin_frame`, `end_frame`, `flush`), and drawing delegation.
+- **`renderer`**: High-level orchestrator managing viewport state, frame lifecycles (`begin_frame`, `end_frame`, `flush`), hardware scissor stack, and drawing delegation.
 
 ```cpp
 #include <arin/renderer.hpp>
@@ -602,9 +699,11 @@ Hardware-accelerated 2D rendering engine powered by OpenGL 3.3 Core profile shad
 #### Core Methods
 - `bool init()`: Compiles GLSL shaders, initializes VAOs/VBOs across all pipelines, and uploads font atlas.
 - `void shutdown()`: Frees OpenGL resources.
-- `void begin_frame(int viewport_width, int viewport_height)`: Sets orthographic projection matrix and blending modes.
+- `void begin_frame(int viewport_width, int viewport_height)`: Sets orthographic projection matrix, blending modes, and resets scissor clip stack.
 - `void end_frame()`: Flushes all batched geometry.
 - `void flush()`: Flushes pending geometry (e.g. text quads) without ending frame.
+- `void push_clip_rect(const Rect& rect)`: Pushes a scissor clipping rectangle onto the clip stack, strictly constraining all subsequent draw calls.
+- `void pop_clip_rect()`: Restores previous scissor clipping boundary from the stack.
 - `void clear(const Color& color)`: Clears frame with specified color.
 - `void draw_rect(const Rect& rect, const Color& color)`: Draws flat rectangle.
 - `void draw_rounded_rect(const Rect& rect, float corner_radius, const Color& fill_color, const Color& border_color = Color::transparent(), float border_width = 0.0f)`:
@@ -629,7 +728,7 @@ Hardware-accelerated 2D rendering engine powered by OpenGL 3.3 Core profile shad
 
 ---
 
-### 4.13 `arin::Font`
+### 4.15 `arin::Font`
 
 Zero-dependency embedded typography engine powered by **Open Sans**.
 
@@ -651,17 +750,29 @@ Zero-dependency embedded typography engine powered by **Open Sans**.
 
 ---
 
-### 4.14 `arin::Window` & `arin::IPlatformBackend`
+### 4.16 `arin::Window` & `arin::IPlatformBackend`
 
-OS abstraction isolating window creation, swap buffers, and event polling.
+OS abstraction isolating window creation, swap buffers, clipboard, and input event polling.
 
 - `class IPlatformBackend`: Abstract interface required for custom OS ports.
+  - `set_mouse_callback(MouseCallback cb)`
+  - `set_key_callback(KeyCallback cb)`
+  - `set_char_callback(CharCallback cb)`
+  - `set_resize_callback(ResizeCallback cb)`
+  - `set_clipboard_text(const std::string& text)`
+  - `get_clipboard_text() const`
 - `class GlfwPlatformBackend`: Production backend for Linux (Wayland / X11) and FreeBSD.
 - `class Window`: High-level wrapper wrapping `IPlatformBackend`.
+  - `on_mouse_event(MouseCallback cb)`
+  - `on_key_event(KeyCallback cb)`
+  - `on_char_event(CharCallback cb)`
+  - `on_resize(ResizeCallback cb)`
+  - `set_clipboard_text(const std::string& text)`
+  - `get_clipboard_text() const`
 
 ---
 
-### 4.15 Geometric & Color Types
+### 4.17 Geometric & Color Types
 
 ```cpp
 #include <arin/types.hpp>
@@ -694,7 +805,7 @@ OS abstraction isolating window creation, swap buffers, and event polling.
 
 ---
 
-### 4.16 Input System
+### 4.18 Input System
 
 ```cpp
 #include <arin/input.hpp>
@@ -705,6 +816,10 @@ OS abstraction isolating window creation, swap buffers, and event polling.
 - `enum class MouseEventType : uint8_t { Move, ButtonDown, ButtonUp, Scroll };`
 - `struct MouseEvent`: Holds position, button, action, scroll delta, with factory helpers (`make_move`, `make_button_down`, `make_button_up`, `make_scroll`).
 - `class InputState`: Tracks current cursor position and pressed button state array.
+- `enum class KeyCode : uint16_t`: Platform-agnostic scan codes for alphanumeric, functional, and navigation keys.
+- `enum class KeyModifier : uint8_t { None = 0, Shift = 1, Control = 2, Alt = 4, Super = 8 };`
+- `struct KeyEvent`: Discrete key event with `key`, `action`, and `modifiers` (`has_shift()`, `has_ctrl()`, `has_alt()`, `has_super()`).
+- `struct TextEvent`: Character input event containing decoded Unicode `codepoint` and UTF-8 `text`.
 
 ---
 

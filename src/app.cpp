@@ -45,6 +45,20 @@ App::App(const std::string& title, int width, int height)
 
     // Set up event routing to managed widgets
     m_window.on_mouse_event([this](const MouseEvent& ev) {
+        // Update focus on left mouse click
+        if (ev.type == MouseEventType::ButtonDown && ev.button == MouseButton::Left) {
+            std::shared_ptr<IWidget> clicked_focusable = nullptr;
+            for (auto it = m_widgets.rbegin(); it != m_widgets.rend(); ++it) {
+                if ((*it)->is_visible() && (*it)->bounds().contains(ev.position)) {
+                    if ((*it)->is_focusable()) {
+                        clicked_focusable = *it;
+                    }
+                    break;
+                }
+            }
+            set_focus(clicked_focusable);
+        }
+
         bool captured = false;
 
         // Traverse in reverse z-order (top-most widget gets first priority)
@@ -71,6 +85,20 @@ App::App(const std::string& title, int width, int height)
             for (auto& w : m_widgets) {
                 w->handle_mouse(ev);
             }
+        }
+    });
+
+    // Set up keyboard key event dispatching to the focused widget
+    m_window.on_key_event([this](const KeyEvent& ev) {
+        if (m_focused_widget && m_focused_widget->is_enabled() && m_focused_widget->is_visible()) {
+            m_focused_widget->handle_key(ev);
+        }
+    });
+
+    // Set up text input event dispatching to the focused widget
+    m_window.on_char_event([this](const TextEvent& ev) {
+        if (m_focused_widget && m_focused_widget->is_enabled() && m_focused_widget->is_visible()) {
+            m_focused_widget->handle_text(ev);
         }
     });
 }
@@ -215,6 +243,79 @@ std::shared_ptr<Icon> App::add_icon(
     auto ic = std::make_shared<Icon>(icon, x, y, size, color);
     m_widgets.push_back(ic);
     return ic;
+}
+
+std::shared_ptr<CheckBox> App::add_checkbox(
+    const std::string& label,
+    float x,
+    float y,
+    bool checked
+) {
+    auto cb = std::make_shared<CheckBox>(label, x, y, checked);
+    m_widgets.push_back(cb);
+    return cb;
+}
+
+std::shared_ptr<CheckBox> App::add_checkbox(CheckBox checkbox) {
+    auto cb = std::make_shared<CheckBox>(std::move(checkbox));
+    m_widgets.push_back(cb);
+    return cb;
+}
+
+std::shared_ptr<CheckBox> App::add_checkbox(std::shared_ptr<CheckBox> checkbox) {
+    if (checkbox) {
+        m_widgets.push_back(checkbox);
+    }
+    return checkbox;
+}
+
+std::shared_ptr<TextInput> App::add_text_input(
+    const std::string& initial_text,
+    float x,
+    float y,
+    float width,
+    float height
+) {
+    auto input = std::make_shared<TextInput>(initial_text, x, y, width, height);
+    input->set_clipboard_provider(
+        [this]() { return m_window.get_clipboard_text(); },
+        [this](const std::string& text) { m_window.set_clipboard_text(text); }
+    );
+    m_widgets.push_back(input);
+    return input;
+}
+
+std::shared_ptr<TextInput> App::add_text_input(TextInput input) {
+    auto ptr = std::make_shared<TextInput>(std::move(input));
+    ptr->set_clipboard_provider(
+        [this]() { return m_window.get_clipboard_text(); },
+        [this](const std::string& text) { m_window.set_clipboard_text(text); }
+    );
+    m_widgets.push_back(ptr);
+    return ptr;
+}
+
+std::shared_ptr<TextInput> App::add_text_input(std::shared_ptr<TextInput> input) {
+    if (input) {
+        input->set_clipboard_provider(
+            [this]() { return m_window.get_clipboard_text(); },
+            [this](const std::string& text) { m_window.set_clipboard_text(text); }
+        );
+        m_widgets.push_back(input);
+    }
+    return input;
+}
+
+void App::set_focus(std::shared_ptr<IWidget> widget) {
+    if (m_focused_widget == widget) return;
+
+    if (m_focused_widget) {
+        m_focused_widget->on_focus(false);
+    }
+    m_focused_widget = widget;
+    if (m_focused_widget) {
+        m_focused_widget->on_focus(true);
+    }
 }
 
 void App::on_frame(FrameCallback cb) {
